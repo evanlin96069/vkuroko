@@ -106,7 +106,7 @@ fn vkrk_run_completionFn(
         );
     };
 
-    return S.completion.complete(partial, commands);
+    return S.completion.complete(partial, commands) catch 0;
 }
 
 var krk_reset = ConCommand.init(.{

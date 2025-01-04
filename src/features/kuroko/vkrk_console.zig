@@ -704,7 +704,7 @@ const DynConCommand = struct {
         const line = std.mem.span(partial);
         const name = if (std.mem.indexOf(u8, line, " ")) |index| line[0..index] else line;
         if (findDynConCommand(name)) |command| {
-            if (!command.completion_callback.isNone()) {
+            if (command.completion_callback.isNone()) {
                 return 0;
             }
             VM.push(command.completion_callback);

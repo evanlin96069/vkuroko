@@ -23,7 +23,7 @@ pub fn simpleComplete(
     }
 
     var pos = base.len;
-    while (partial[pos] != ' ') {
+    while (partial[pos] == ' ') {
         pos += 1;
     }
 
@@ -110,7 +110,7 @@ pub const FileCompletion = struct {
         self: *FileCompletion,
         partial: [*:0]const u8,
         commands: *[max_items][max_length]u8,
-    ) c_int {
+    ) !c_int {
         if (!self.registered) {
             // I think just by calling init on ArrayList won't allocate memory, so we only register the one we used.
             self.register();
@@ -126,7 +126,7 @@ pub const FileCompletion = struct {
             return 0;
         }
 
-        while (partial[pos] != ' ') {
+        while (partial[pos] == ' ') {
             pos += 1;
         }
 
@@ -137,8 +137,13 @@ pub const FileCompletion = struct {
             return 0;
         }
 
-        const end_pos = std.mem.lastIndexOf(u8, line, "/\\") orelse pos;
+        const slash_pos = std.mem.lastIndexOf(u8, line, "/");
+        var end_pos = slash_pos orelse pos;
         const dir_name = line[pos..end_pos];
+
+        if (slash_pos != null) {
+            end_pos += 1;
+        }
 
         var cached: bool = false;
         if (self.cached_directory) |s| {
@@ -147,39 +152,53 @@ pub const FileCompletion = struct {
 
         if (!cached) {
             self.clearCache();
-            const path = std.fmt.allocPrint(core.allocator, "{s}/{s}", .{ engine.client.getGameDirectory(), dir_name }) catch {
-                return 0;
-            };
-            self.cached_directory = path;
+            self.cached_directory = try core.allocator.dupe(u8, dir_name);
 
-            var dir = std.fs.openDirAbsolute(path, .{ .iterate = true }) catch {
+            const path = try std.fmt.allocPrint(
+                core.allocator,
+                "{s}/{s}{s}{s}/*.*",
+                .{
+                    engine.client.getGameDirectory(),
+                    self.base_path,
+                    if (dir_name.len == 0) "" else "/",
+                    dir_name,
+                },
+            );
+            defer core.allocator.free(path);
+
+            // Using std.fs.cwd().openDir Keeps getting me stack overflow so I just use Windows API calls.
+            const w_path = try std.unicode.utf8ToUtf16LeAllocZ(core.allocator, path);
+            defer core.allocator.free(w_path);
+
+            var fd: std.os.windows.WIN32_FIND_DATAW = undefined;
+            const h_find = std.os.windows.kernel32.FindFirstFileW(w_path, &fd);
+            if (h_find == std.os.windows.INVALID_HANDLE_VALUE) {
                 return 0;
-            };
-            var walker = dir.walk(core.allocator) catch {
-                return 0;
-            };
-            defer walker.deinit();
-            while (walker.next() catch {
-                return 0;
-            }) |entry| {
-                const name = entry.basename;
-                switch (entry.kind) {
-                    .directory => {
-                        if (std.mem.eql(u8, name, ".") or std.mem.eql(u8, name, "..")) {
-                            continue;
-                        }
-                        const s = std.fmt.allocPrint(core.allocator, "{s}/", .{name}) catch continue;
-                        self.cache.append(s) catch continue;
-                    },
-                    .file => {
-                        if (std.mem.endsWith(u8, name, self.file_extension)) {
-                            continue;
-                        }
+            }
+            defer std.os.windows.FindClose(h_find);
+
+            while (true) {
+                const len = std.mem.indexOf(u16, &fd.cFileName, &[_]u16{0}).?;
+                const name = try std.unicode.utf16LeToUtf8Alloc(core.allocator, fd.cFileName[0..len]);
+                defer core.allocator.free(name);
+
+                if (fd.dwFileAttributes & std.os.windows.FILE_ATTRIBUTE_DIRECTORY != 0) {
+                    if (!std.mem.eql(u8, name, ".") and !std.mem.eql(u8, name, "..")) {
+                        const s = try std.fmt.allocPrint(core.allocator, "{s}/", .{name});
+                        errdefer core.allocator.free(s);
+                        try self.cache.append(s);
+                    }
+                } else {
+                    if (std.mem.endsWith(u8, name, self.file_extension)) {
                         const dot = std.mem.lastIndexOf(u8, name, ".") orelse continue;
-                        const s = core.allocator.dupe(u8, name[0..dot]) catch continue;
-                        self.cache.append(s) catch continue;
-                    },
-                    else => {},
+                        const s = try core.allocator.dupe(u8, name[0..dot]);
+                        errdefer core.allocator.free(s);
+                        try self.cache.append(s);
+                    }
+                }
+
+                if (std.os.windows.kernel32.FindNextFileW(h_find, &fd) == std.os.windows.FALSE) {
+                    break;
                 }
             }
         }
