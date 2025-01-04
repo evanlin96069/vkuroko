@@ -258,7 +258,7 @@ const ConVar = extern struct {
         dyn_cvar.register();
 
         self.cvar = &dyn_cvar.cvar;
-        return argv[0];
+        return KrkValue.noneValue();
     }
 
     fn __repr__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
@@ -406,13 +406,13 @@ const ConCommand = extern struct {
 
     fn createCommand(self: KrkValue, callback: KrkValue, flags: i32, completion_callback: KrkValue) KrkValue {
         const inst = asConCommand(self);
-        const v_name = self.getAttribute("__name__");
+        const v_name = callback.getAttribute("__name__");
         if (v_name.isNone()) {
             return KrkValue.noneValue();
         }
         const name = v_name.asString().chars;
 
-        const v_doc = self.getAttributeDefault("__doc__", KrkValue.noneValue());
+        const v_doc = callback.getAttributeDefault("__doc__", KrkValue.noneValue());
         var help_string: [*:0]const u8 = "";
         if (v_doc.isString()) {
             help_string = v_doc.asString().chars;
@@ -433,7 +433,7 @@ const ConCommand = extern struct {
 
     fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
         var callback: KrkValue = KrkValue.noneValue();
-        var completion_callback: KrkValue = KrkValue.noneValue();
+        var completion: KrkValue = KrkValue.noneValue();
         var flags: i32 = 0;
 
         if (!kuroko.parseArgs(
@@ -445,12 +445,12 @@ const ConCommand = extern struct {
             &.{
                 "callback",
                 "flags",
-                "completion_callback",
+                "completion",
             },
             .{
                 &callback,
                 &flags,
-                &completion_callback,
+                &completion,
             },
         )) {
             return KrkValue.noneValue();
@@ -463,11 +463,15 @@ const ConCommand = extern struct {
         const inst = asConCommand(argv[0]);
         if (callback.isNone()) {
             inst.flags = flags;
-            inst.completion_callback = completion_callback;
-            return argv[0];
+            inst.completion_callback = completion;
+            return KrkValue.noneValue();
         }
 
-        return createCommand(argv[0], callback, flags, completion_callback);
+        const result = createCommand(argv[0], callback, flags, completion);
+        if (VM.getCurrentThread().flags.thread_has_exception) {
+            return result;
+        }
+        return KrkValue.noneValue();
     }
 
     fn __call__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
@@ -592,7 +596,7 @@ const DynConVar = struct {
         copy_cvar.help_string = copy_help;
 
         const result = try tier0.allocator.create(DynConVar);
-        result.* = DynConVar{
+        result.* = .{
             .cvar = tier1.ConVar.init(copy_cvar),
         };
 
@@ -644,15 +648,18 @@ const DynConCommand = struct {
 
         const name = std.mem.span(args.argv[0]);
         if (findDynConCommand(name)) |command| {
+            VM.push(command.callback);
+
             const list = KrkList.listOf(0, null, false);
+            VM.push(list);
+
             var i: u32 = 0;
             while (i < args.argc) : (i += 1) {
                 list.asList().append(KrkString.copyString(args.argv[i]).asValue());
             }
 
-            VM.push(command.callback);
-            VM.push(list);
             _ = VM.callStack(1);
+            VM.resetStack();
         } else {
             std.log.warn("vkrk: Unknown command.", .{});
         }
@@ -706,6 +713,7 @@ const DynConCommand = struct {
                 .commands = commands,
             };
             _ = result.unpackIterable(&context, commandCompletionUnpackCallback);
+            VM.resetStack();
             return @intCast(context.count);
         } else {
             std.log.warn("vkrk: Unknown command to complete.", .{});
@@ -737,7 +745,7 @@ const DynConCommand = struct {
         };
 
         const result = try tier0.allocator.create(DynConCommand);
-        result.* = DynConCommand{
+        result.* = .{
             .cmd = tier1.ConCommand.init(copy_cmd),
             .callback = command.callback,
             .completion_callback = command.completion_callback,
