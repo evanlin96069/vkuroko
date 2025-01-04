@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const core = @import("../../core.zig");
 const modules = @import("../../modules.zig");
 const tier0 = modules.tier0;
 const tier1 = modules.tier1;
@@ -583,19 +584,19 @@ const DynConVar = struct {
     var vars: ?*DynConVar = null;
 
     fn create(cvar: tier1.ConVar.Data) !*DynConVar {
-        const copy_name = try tier0.allocator.dupeZ(u8, std.mem.span(cvar.name));
-        errdefer tier0.allocator.free(copy_name);
-        const copy_default = try tier0.allocator.dupeZ(u8, std.mem.span(cvar.default_value));
-        errdefer tier0.allocator.free(copy_default);
-        const copy_help = try tier0.allocator.dupeZ(u8, std.mem.span(cvar.help_string));
-        errdefer tier0.allocator.free(copy_help);
+        const copy_name = try core.allocator.dupeZ(u8, std.mem.span(cvar.name));
+        errdefer core.allocator.free(copy_name);
+        const copy_default = try core.allocator.dupeZ(u8, std.mem.span(cvar.default_value));
+        errdefer core.allocator.free(copy_default);
+        const copy_help = try core.allocator.dupeZ(u8, std.mem.span(cvar.help_string));
+        errdefer core.allocator.free(copy_help);
 
         var copy_cvar: tier1.ConVar.Data = cvar;
         copy_cvar.name = copy_name;
         copy_cvar.default_value = copy_default;
         copy_cvar.help_string = copy_help;
 
-        const result = try tier0.allocator.create(DynConVar);
+        const result = try core.allocator.create(DynConVar);
         result.* = .{
             .cvar = tier1.ConVar.init(copy_cvar),
         };
@@ -615,9 +616,9 @@ const DynConVar = struct {
             tier0.allocator.free(std.mem.span(s));
             self.cvar.string_value = null;
         }
-        tier0.allocator.free(std.mem.span(self.cvar.base1.name));
-        tier0.allocator.free(std.mem.span(self.cvar.base1.help_string));
-        tier0.allocator.free(std.mem.span(self.cvar.default_value));
+        core.allocator.free(std.mem.span(self.cvar.base1.name));
+        core.allocator.free(std.mem.span(self.cvar.base1.help_string));
+        core.allocator.free(std.mem.span(self.cvar.default_value));
     }
 };
 
@@ -729,10 +730,10 @@ const DynConCommand = struct {
         callback: KrkValue,
         completion_callback: KrkValue,
     }) !*DynConCommand {
-        const copy_name = try tier0.allocator.dupeZ(u8, std.mem.span(command.name));
-        errdefer tier0.allocator.free(copy_name);
-        const copy_help = try tier0.allocator.dupeZ(u8, std.mem.span(command.help_string));
-        errdefer tier0.allocator.free(copy_help);
+        const copy_name = try core.allocator.dupeZ(u8, std.mem.span(command.name));
+        errdefer core.allocator.free(copy_name);
+        const copy_help = try core.allocator.dupeZ(u8, std.mem.span(command.help_string));
+        errdefer core.allocator.free(copy_help);
 
         const completion_callback: ?tier1.ConCommand.CommandCompletionCallbackFn = if (command.completion_callback.isNone()) null else vkrkCommandCompletionCallback;
 
@@ -744,7 +745,7 @@ const DynConCommand = struct {
             .completion_callback = completion_callback,
         };
 
-        const result = try tier0.allocator.create(DynConCommand);
+        const result = try core.allocator.create(DynConCommand);
         result.* = .{
             .cmd = tier1.ConCommand.init(copy_cmd),
             .callback = command.callback,
@@ -762,8 +763,8 @@ const DynConCommand = struct {
     }
 
     fn deinit(self: *DynConCommand) void {
-        tier0.allocator.free(std.mem.span(self.cmd.base.name));
-        tier0.allocator.free(std.mem.span(self.cmd.base.help_string));
+        core.allocator.free(std.mem.span(self.cmd.base.name));
+        core.allocator.free(std.mem.span(self.cmd.base.help_string));
     }
 };
 
@@ -774,7 +775,7 @@ pub fn destroyDynCommands() void {
         curr.deinit();
 
         cvar = curr.next;
-        tier0.allocator.destroy(curr);
+        core.allocator.destroy(curr);
     }
 
     var command = DynConCommand.cmds;
@@ -783,6 +784,6 @@ pub fn destroyDynCommands() void {
         curr.deinit();
 
         command = curr.next;
-        tier0.allocator.destroy(curr);
+        // core.allocator.destroy(curr);
     }
 }

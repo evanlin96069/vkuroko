@@ -1,7 +1,7 @@
 const std = @import("std");
 
+const core = @import("../core.zig");
 const modules = @import("../modules.zig");
-const tier0 = modules.tier0;
 const tier1 = modules.tier1;
 const ConCommand = tier1.ConCommand;
 
@@ -91,15 +91,15 @@ fn addFields(
         const name = std.mem.span(desc.field_name);
 
         if (desc.field_type == .embedded) {
-            const field_prefix = try tier0.allocator.alloc(u8, name.len + 1);
-            defer tier0.allocator.free(field_prefix);
+            const field_prefix = try core.allocator.alloc(u8, name.len + 1);
+            defer core.allocator.free(field_prefix);
 
             @memcpy(field_prefix[0..name.len], name);
             field_prefix[name.len] = '.';
 
             try addFields(out_map, desc.td, offset, field_prefix);
         } else {
-            const key = try tier0.allocator.alloc(u8, prefix.len + name.len);
+            const key = try core.allocator.alloc(u8, prefix.len + name.len);
 
             @memcpy(key[0..prefix.len], prefix);
             @memcpy(key[prefix.len..], name);
@@ -116,7 +116,7 @@ pub fn getField(comptime T: type, ptr: *anyopaque, offset: usize) *T {
 }
 
 fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize))) !void {
-    var map = std.StringHashMap(usize).init(tier0.allocator);
+    var map = std.StringHashMap(usize).init(core.allocator);
     errdefer map.deinit();
 
     try addFields(&map, datamap, 0, "");
@@ -201,20 +201,20 @@ fn init() bool {
     const server_dll = zhook.mem.getModule("server") orelse return false;
     const client_dll = zhook.mem.getModule("client") orelse return false;
 
-    var server_patterns = std.ArrayList(MatchedPattern).init(tier0.allocator);
+    var server_patterns = std.ArrayList(MatchedPattern).init(core.allocator);
     defer server_patterns.deinit();
     zhook.mem.scanAllPatterns(server_dll, datamap_patterns[0..], &server_patterns) catch {
         return false;
     };
 
-    var client_patterns = std.ArrayList(MatchedPattern).init(tier0.allocator);
+    var client_patterns = std.ArrayList(MatchedPattern).init(core.allocator);
     defer client_patterns.deinit();
     zhook.mem.scanAllPatterns(client_dll, datamap_patterns[0..], &client_patterns) catch {
         return false;
     };
 
-    server_map = std.StringHashMap(std.StringHashMap(usize)).init(tier0.allocator);
-    client_map = std.StringHashMap(std.StringHashMap(usize)).init(tier0.allocator);
+    server_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
+    client_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
 
     for (server_patterns.items) |pattern| {
         const info = DataMapInfo.fromPattern(pattern);
@@ -251,7 +251,7 @@ fn deinit() void {
     while (it.next()) |kv| {
         var inner_it = kv.value_ptr.iterator();
         while (inner_it.next()) |inner_kv| {
-            tier0.allocator.free(inner_kv.key_ptr.*);
+            core.allocator.free(inner_kv.key_ptr.*);
         }
         kv.value_ptr.deinit();
     }
@@ -261,7 +261,7 @@ fn deinit() void {
     while (it.next()) |kv| {
         var inner_it = kv.value_ptr.iterator();
         while (inner_it.next()) |inner_kv| {
-            tier0.allocator.free(inner_kv.key_ptr.*);
+            core.allocator.free(inner_kv.key_ptr.*);
         }
         kv.value_ptr.deinit();
     }

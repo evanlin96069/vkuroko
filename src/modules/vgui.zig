@@ -1,6 +1,5 @@
 const std = @import("std");
 
-const tier0 = @import("tier0.zig");
 const interfaces = @import("../interfaces.zig");
 const core = @import("../core.zig");
 const event = @import("../event.zig");
@@ -126,19 +125,19 @@ const IMatSystemSurface = extern struct {
     pub fn drawPrintText(self: *IMatSystemSurface, comptime fmt: []const u8, args: anytype) void {
         const _drawPrintText: *const fn (this: *anyopaque, text: [*]u16, text_len: c_int, draw_type: c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawPrintText]);
 
-        const text = std.fmt.allocPrint(tier0.allocator, fmt, args) catch {
+        const text = std.fmt.allocPrint(core.allocator, fmt, args) catch {
             return;
         };
 
-        defer tier0.allocator.free(text);
+        defer core.allocator.free(text);
 
         const utf16_len = std.unicode.calcUtf16LeLen(text) catch {
             return;
         };
-        const utf16_buf = tier0.allocator.alloc(u16, utf16_len) catch {
+        const utf16_buf = core.allocator.alloc(u16, utf16_len) catch {
             return;
         };
-        defer tier0.allocator.free(utf16_buf);
+        defer core.allocator.free(utf16_buf);
 
         _ = std.unicode.utf8ToUtf16Le(utf16_buf, text) catch {
             return;

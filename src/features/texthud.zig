@@ -1,7 +1,7 @@
 const std = @import("std");
 
+const core = @import("../core.zig");
 const modules = @import("../modules.zig");
-const tier0 = modules.tier0;
 const tier1 = modules.tier1;
 const ConVar = tier1.ConVar;
 const engine = modules.engine;
@@ -208,7 +208,7 @@ fn shouldLoad() bool {
 }
 
 fn init() bool {
-    hud_elements = std.ArrayList(HUDElement).init(tier0.allocator);
+    hud_elements = std.ArrayList(HUDElement).init(core.allocator);
 
     font_DefaultFixedOutline = vgui.ischeme.getFont("DefaultFixedOutline", false);
     font_DefaultFixedOutline_tall = vgui.imatsystem.getFontTall(font_DefaultFixedOutline);

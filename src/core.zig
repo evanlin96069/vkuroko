@@ -1,7 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const tier0 = @import("modules.zig").tier0;
 const event = @import("event.zig");
 
 const Module = @import("modules/Module.zig");
@@ -10,6 +9,9 @@ const Feature = @import("features/Feature.zig");
 const HookManager = @import("zhook").HookManager;
 
 pub var hook_manager: HookManager = undefined;
+
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+pub const allocator = gpa.allocator();
 
 const modules: []const *Module = mods: {
     var mods: []const *Module = &.{};
@@ -46,7 +48,7 @@ const features: []const *Feature = mods: {
 
 pub fn init() bool {
     event.init();
-    hook_manager = HookManager.init(tier0.allocator);
+    hook_manager = HookManager.init(allocator);
 
     for (modules) |module| {
         module.loaded = module.init();
@@ -92,4 +94,6 @@ pub fn deinit() void {
 
     hook_manager.deinit();
     event.deinit();
+
+    _ = gpa.deinit();
 }

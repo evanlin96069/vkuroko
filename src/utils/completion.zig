@@ -2,8 +2,8 @@ const std = @import("std");
 
 const str_utils = @import("str_utils.zig");
 
+const core = @import("../core.zig");
 const modules = @import("../modules.zig");
-const tier0 = modules.tier0;
 const tier1 = modules.tier1;
 const ConCommand = tier1.ConCommand;
 const engine = modules.engine;
@@ -70,7 +70,7 @@ pub const FileCompletion = struct {
             .command = command,
             .base_path = base_path,
             .file_extension = file_extension,
-            .cache = std.ArrayList([]const u8).init(tier0.allocator),
+            .cache = std.ArrayList([]const u8).init(core.allocator),
             .cached_directory = null,
         };
     }
@@ -88,12 +88,12 @@ pub const FileCompletion = struct {
 
     fn clearCache(self: *FileCompletion) void {
         if (self.cached_directory) |dir| {
-            tier0.allocator.free(dir);
+            core.allocator.free(dir);
             self.cached_directory = null;
         }
 
         for (self.cache.items) |s| {
-            tier0.allocator.free(s);
+            core.allocator.free(s);
         }
 
         self.cache.clearRetainingCapacity();
@@ -147,7 +147,7 @@ pub const FileCompletion = struct {
 
         if (!cached) {
             self.clearCache();
-            const path = std.fmt.allocPrint(tier0.allocator, "{s}/{s}", .{ engine.client.getGameDirectory(), dir_name }) catch {
+            const path = std.fmt.allocPrint(core.allocator, "{s}/{s}", .{ engine.client.getGameDirectory(), dir_name }) catch {
                 return 0;
             };
             self.cached_directory = path;
@@ -155,7 +155,7 @@ pub const FileCompletion = struct {
             var dir = std.fs.openDirAbsolute(path, .{ .iterate = true }) catch {
                 return 0;
             };
-            var walker = dir.walk(tier0.allocator) catch {
+            var walker = dir.walk(core.allocator) catch {
                 return 0;
             };
             defer walker.deinit();
@@ -168,7 +168,7 @@ pub const FileCompletion = struct {
                         if (std.mem.eql(u8, name, ".") or std.mem.eql(u8, name, "..")) {
                             continue;
                         }
-                        const s = std.fmt.allocPrint(tier0.allocator, "{s}/", .{name}) catch continue;
+                        const s = std.fmt.allocPrint(core.allocator, "{s}/", .{name}) catch continue;
                         self.cache.append(s) catch continue;
                     },
                     .file => {
@@ -176,7 +176,7 @@ pub const FileCompletion = struct {
                             continue;
                         }
                         const dot = std.mem.lastIndexOf(u8, name, ".") orelse continue;
-                        const s = tier0.allocator.dupe(u8, name[0..dot]) catch continue;
+                        const s = core.allocator.dupe(u8, name[0..dot]) catch continue;
                         self.cache.append(s) catch continue;
                     },
                     else => {},

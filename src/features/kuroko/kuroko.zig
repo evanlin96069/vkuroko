@@ -2,6 +2,7 @@ const std = @import("std");
 
 const Feature = @import("../Feature.zig");
 
+const core = @import("../../core.zig");
 const modules = @import("../../modules.zig");
 const tier0 = modules.tier0;
 const tier1 = modules.tier1;
@@ -75,7 +76,7 @@ fn vkrk_run_Fn(args: *const tier1.CCommand) callconv(.C) void {
 
     const ext = ".krk";
 
-    var path = std.ArrayList(u8).init(tier0.allocator);
+    var path = std.ArrayList(u8).init(core.allocator);
     defer path.deinit();
 
     path.appendSlice(args.args(1)) catch return;
