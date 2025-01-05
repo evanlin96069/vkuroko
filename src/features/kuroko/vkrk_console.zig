@@ -777,6 +777,7 @@ pub fn destroyDynCommands() void {
         cvar = curr.next;
         core.allocator.destroy(curr);
     }
+    DynConVar.vars = null;
 
     var command = DynConCommand.cmds;
     while (command) |curr| {
@@ -784,6 +785,7 @@ pub fn destroyDynCommands() void {
         curr.deinit();
 
         command = curr.next;
-        // core.allocator.destroy(curr);
+        core.allocator.destroy(curr);
     }
+    DynConCommand.cmds = null;
 }
