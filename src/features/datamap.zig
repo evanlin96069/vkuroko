@@ -12,8 +12,13 @@ const MatchedPattern = zhook.mem.MatchedPattern;
 
 const DataMap = @import("sdk").DataMap;
 
+const completion = @import("../utils/completion.zig");
+
 pub var server_map: std.StringHashMap(std.StringHashMap(usize)) = undefined;
 pub var client_map: std.StringHashMap(std.StringHashMap(usize)) = undefined;
+
+// class names for datamap_walk completion
+var class_names: ?[][]const u8 = null;
 
 const DataMapInfo = struct {
     num_fields: c_int,
@@ -161,6 +166,7 @@ var vkrk_datamap_walk = ConCommand.init(.{
     .name = "vkrk_datamap_walk",
     .help_string = "Walk through a datamap and print all offsets.",
     .command_callback = datamap_walk_Fn,
+    .completion_callback = datamap_walk_completionFn,
 });
 
 fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.C) void {
@@ -184,6 +190,21 @@ fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.C) void {
             std.log.info("    {s}: {d}", .{ kv.key_ptr.*, kv.value_ptr.* });
         }
     }
+}
+
+fn datamap_walk_completionFn(
+    partial: [*:0]const u8,
+    commands: *[ConCommand.completion_max_items][ConCommand.completion_item_length]u8,
+) callconv(.C) c_int {
+    if (class_names) |names| {
+        return completion.simpleComplete(
+            std.mem.span(vkrk_datamap_walk.base.name),
+            names,
+            partial,
+            commands,
+        );
+    }
+    return 0;
 }
 
 pub var feature: Feature = .{
@@ -216,6 +237,9 @@ fn init() bool {
     server_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
     client_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
 
+    var class_names_set = std.StringHashMap(void).init(core.allocator);
+    defer class_names_set.deinit();
+
     for (server_patterns.items) |pattern| {
         const info = DataMapInfo.fromPattern(pattern);
 
@@ -225,6 +249,7 @@ fn init() bool {
                 client_map.deinit();
                 return false;
             };
+            class_names_set.put(std.mem.span(info.map.data_class_name), {}) catch {};
         }
     }
 
@@ -237,6 +262,16 @@ fn init() bool {
                 client_map.deinit();
                 return false;
             };
+            class_names_set.put(std.mem.span(info.map.data_class_name), {}) catch {};
+        }
+    }
+
+    class_names = core.allocator.alloc([]const u8, class_names_set.count()) catch null;
+    if (class_names) |names| {
+        var i: usize = 0;
+        var it = class_names_set.iterator();
+        while (it.next()) |entry| : (i += 1) {
+            names[i] = entry.key_ptr.*;
         }
     }
 
@@ -247,6 +282,10 @@ fn init() bool {
 }
 
 fn deinit() void {
+    if (class_names) |names| {
+        core.allocator.free(names);
+    }
+
     var it = server_map.iterator();
     while (it.next()) |kv| {
         var inner_it = kv.value_ptr.iterator();
