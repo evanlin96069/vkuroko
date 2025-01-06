@@ -197,8 +197,8 @@ test "Load value from memory" {
 
 pub fn getModule(comptime module_name: []const u8) ?[]const u8 {
     const dll_name = module_name ++ ".dll";
-    const path_w = std.os.windows.sliceToPrefixedFileW(null, dll_name) catch return null;
-    const dll = std.os.windows.kernel32.GetModuleHandleW(path_w.span()) orelse return null;
+    const path_w = std.unicode.utf8ToUtf16LeStringLiteral(dll_name);
+    const dll = std.os.windows.kernel32.GetModuleHandleW(path_w) orelse return null;
     var info: std.os.windows.MODULEINFO = undefined;
     if (std.os.windows.kernel32.K32GetModuleInformation(std.os.windows.kernel32.GetCurrentProcess(), dll, &info, @sizeOf(std.os.windows.MODULEINFO)) == 0) {
         return null;

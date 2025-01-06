@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const Module = @import("Module.zig");
+const DynLib = @import("../utils/DynLib.zig");
 
 pub var module: Module = .{
     .name = "tier0",
@@ -9,7 +10,7 @@ pub var module: Module = .{
 };
 
 fn init() bool {
-    var lib = std.DynLib.open("tier0.dll") catch return false;
+    var lib = DynLib.open("tier0.dll") catch return false;
     defer lib.close();
 
     const names = .{
