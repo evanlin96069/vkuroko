@@ -92,7 +92,9 @@ fn addFields(
             continue;
         }
 
-        const offset: usize = @intCast(desc.field_offset[0]);
+        var offset: usize = base_offset;
+        offset += @intCast(desc.field_offset[0]);
+
         const name = std.mem.span(desc.field_name);
 
         if (desc.field_type == .embedded) {
@@ -113,13 +115,13 @@ fn addFields(
             errdefer core.allocator.free(key);
 
             if (out_map.get(key)) |v| {
-                if (v != base_offset + offset) {
+                if (v != offset) {
                     std.log.debug("Found a duplicated datamap field with a different offset:", .{});
-                    std.log.debug("{s}: {d}/{d}", .{ key, v, base_offset + offset });
+                    std.log.debug("{s}: {d}/{d}", .{ key, v, offset });
                 }
                 core.allocator.free(key);
             } else {
-                try out_map.put(key, base_offset + offset);
+                try out_map.put(key, offset);
             }
         }
     }
