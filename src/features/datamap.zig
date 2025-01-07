@@ -186,6 +186,35 @@ var vkrk_datamap_walk = ConCommand.init(.{
     .completion_callback = datamap_walk_completionFn,
 });
 
+fn printDatamap(map: *const std.StringHashMap(usize)) void {
+    const Field = struct {
+        name: []const u8,
+        offset: usize,
+
+        fn compareOffset(context: void, a: @This(), b: @This()) bool {
+            _ = context;
+            return a.offset < b.offset;
+        }
+    };
+
+    var fields = core.allocator.alloc(Field, map.count()) catch return;
+    defer core.allocator.free(fields);
+
+    var i: u32 = 0;
+    var it = map.iterator();
+    while (it.next()) |kv| : (i += 1) {
+        fields[i] = .{
+            .name = kv.key_ptr.*,
+            .offset = kv.value_ptr.*,
+        };
+    }
+    std.mem.sort(Field, fields, {}, Field.compareOffset);
+
+    for (fields) |field| {
+        std.log.info("    {s}: {d}", .{ field.name, field.offset });
+    }
+}
+
 fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.C) void {
     if (args.argc != 2) {
         std.log.info("Usage: vkrk_datamap_walk <class name>", .{});
@@ -194,18 +223,12 @@ fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.C) void {
 
     if (server_map.get(args.args(1))) |map| {
         std.log.info("Server map:", .{});
-        var it = map.iterator();
-        while (it.next()) |kv| {
-            std.log.info("    {s}: {d}", .{ kv.key_ptr.*, kv.value_ptr.* });
-        }
+        printDatamap(&map);
     }
 
     if (client_map.get(args.args(1))) |map| {
         std.log.info("Client map:", .{});
-        var it = map.iterator();
-        while (it.next()) |kv| {
-            std.log.info("    {s}: {d}", .{ kv.key_ptr.*, kv.value_ptr.* });
-        }
+        printDatamap(&map);
     }
 }
 
