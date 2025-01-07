@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 
 const event = @import("event.zig");
 
+const tier0 = @import("modules/tier0.zig");
 const Module = @import("modules/Module.zig");
 const Feature = @import("features/Feature.zig");
 
@@ -95,5 +96,10 @@ pub fn deinit() void {
     hook_manager.deinit();
     event.deinit();
 
-    _ = gpa.deinit();
+    const leak_check = gpa.deinit();
+    tier0.module.loaded = true;
+    if (leak_check == .leak) {
+        std.log.warn("vkuroko: Memory leak detected", .{});
+    }
+    tier0.module.loaded = false;
 }

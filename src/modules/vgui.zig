@@ -128,20 +128,12 @@ const IMatSystemSurface = extern struct {
         const text = std.fmt.allocPrint(core.allocator, fmt, args) catch {
             return;
         };
-
         defer core.allocator.free(text);
 
-        const utf16_len = std.unicode.calcUtf16LeLen(text) catch {
-            return;
-        };
-        const utf16_buf = core.allocator.alloc(u16, utf16_len) catch {
+        const utf16_buf = std.unicode.utf8ToUtf16LeAlloc(core.allocator, text) catch {
             return;
         };
         defer core.allocator.free(utf16_buf);
-
-        _ = std.unicode.utf8ToUtf16Le(utf16_buf, text) catch {
-            return;
-        };
 
         _drawPrintText(self, utf16_buf.ptr, @intCast(utf16_buf.len), 0);
     }

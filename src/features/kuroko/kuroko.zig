@@ -195,6 +195,7 @@ fn init() bool {
 }
 
 fn deinit() void {
+    vkrk_console.destroyDynCommands();
     VM.deinit();
 }
 

@@ -772,9 +772,9 @@ pub fn destroyDynCommands() void {
     var cvar = DynConVar.vars;
     while (cvar) |curr| {
         tier1.icvar.unregisterConCommand(@ptrCast(&curr.cvar));
-        curr.deinit();
-
         cvar = curr.next;
+
+        curr.deinit();
         core.allocator.destroy(curr);
     }
     DynConVar.vars = null;
@@ -782,9 +782,9 @@ pub fn destroyDynCommands() void {
     var command = DynConCommand.cmds;
     while (command) |curr| {
         tier1.icvar.unregisterConCommand(@ptrCast(&curr.cmd));
-        curr.deinit();
-
         command = curr.next;
+
+        curr.deinit();
         core.allocator.destroy(curr);
     }
     DynConCommand.cmds = null;

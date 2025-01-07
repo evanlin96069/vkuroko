@@ -96,20 +96,31 @@ fn addFields(
         const name = std.mem.span(desc.field_name);
 
         if (desc.field_type == .embedded) {
-            const field_prefix = try core.allocator.alloc(u8, name.len + 1);
+            const field_prefix = try std.mem.concat(core.allocator, u8, &[_][]const u8{ name, "." });
             defer core.allocator.free(field_prefix);
-
-            @memcpy(field_prefix[0..name.len], name);
-            field_prefix[name.len] = '.';
 
             try addFields(out_map, desc.td, offset, field_prefix);
         } else {
-            const key = try core.allocator.alloc(u8, prefix.len + name.len);
+            const key = try std.fmt.allocPrint(
+                core.allocator,
+                "{s}::{s}{s}",
+                .{
+                    datamap.data_class_name,
+                    prefix,
+                    name,
+                },
+            );
+            errdefer core.allocator.free(key);
 
-            @memcpy(key[0..prefix.len], prefix);
-            @memcpy(key[prefix.len..], name);
-
-            try out_map.put(key, base_offset + offset);
+            if (out_map.get(key)) |v| {
+                if (v != base_offset + offset) {
+                    std.log.debug("Found a duplicated datamap field with a different offset:", .{});
+                    std.log.debug("{s}: {d}/{d}", .{ key, v, base_offset + offset });
+                }
+                core.allocator.free(key);
+            } else {
+                try out_map.put(key, base_offset + offset);
+            }
         }
     }
 }
@@ -121,16 +132,22 @@ pub fn getField(comptime T: type, ptr: *anyopaque, offset: usize) *T {
 }
 
 fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize))) !void {
+    const key = std.mem.span(datamap.data_class_name);
+    if (dll_map.contains(key)) {
+        return error.DuplicatedClass;
+    }
+
     var map = std.StringHashMap(usize).init(core.allocator);
-    errdefer map.deinit();
+    errdefer {
+        var it = map.iterator();
+        while (it.next()) |kv| {
+            core.allocator.free(kv.key_ptr.*);
+        }
+        map.deinit();
+    }
 
     try addFields(&map, datamap, 0, "");
 
-    const key = std.mem.span(datamap.data_class_name);
-    var value_ptr = dll_map.getPtr(key);
-    if (value_ptr != null) {
-        value_ptr.?.deinit();
-    }
     try dll_map.put(key, map);
 }
 
@@ -245,9 +262,7 @@ fn init() bool {
 
         if (info.num_fields > 0 and doesMapLooksValid(info.map, @intFromPtr(server_dll.ptr), server_dll.len)) {
             addMap(info.map, &server_map) catch {
-                server_map.deinit();
-                client_map.deinit();
-                return false;
+                continue;
             };
             class_names_set.put(std.mem.span(info.map.data_class_name), {}) catch {};
         }
@@ -258,9 +273,7 @@ fn init() bool {
 
         if (info.num_fields > 0 and doesMapLooksValid(info.map, @intFromPtr(client_dll.ptr), client_dll.len)) {
             addMap(info.map, &client_map) catch {
-                server_map.deinit();
-                client_map.deinit();
-                return false;
+                continue;
             };
             class_names_set.put(std.mem.span(info.map.data_class_name), {}) catch {};
         }
