@@ -98,17 +98,25 @@ fn addFields(
         const name = std.mem.span(desc.field_name);
 
         if (desc.field_type == .embedded) {
-            const field_prefix = try std.mem.concat(core.allocator, u8, &[_][]const u8{ name, "." });
+            const field_prefix = try std.fmt.allocPrint(
+                core.allocator,
+                "{s}{s}::{s}.",
+                .{
+                    prefix,
+                    datamap.data_class_name,
+                    name,
+                },
+            );
             defer core.allocator.free(field_prefix);
 
             try addFields(out_map, desc.td, offset, field_prefix);
         } else {
             const key = try std.fmt.allocPrint(
                 core.allocator,
-                "{s}::{s}{s}",
+                "{s}{s}::{s}",
                 .{
-                    datamap.data_class_name,
                     prefix,
+                    datamap.data_class_name,
                     name,
                 },
             );

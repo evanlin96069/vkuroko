@@ -303,7 +303,7 @@ fn init() bool {
         const m_vecAbsOrigin = map.get("CBaseEntity::m_vecAbsOrigin");
         const m_vecAbsVelocity = map.get("CBaseEntity::m_vecAbsVelocity");
         const m_flMaxspeed = map.get("CBasePlayer::m_flMaxspeed");
-        const m_bDucked = map.get("CPlayerLocalData::m_Local.m_bDucked");
+        const m_bDucked = map.get("CBasePlayer::m_Local.CPlayerLocalData::m_bDucked");
         const m_hGroundEntity = map.get("CBaseEntity::m_hGroundEntity");
         const m_bSinglePlayerGameEnding = map.get("CBasePlayer::m_bSinglePlayerGameEnding");
         const m_vecPreviouslyPredictedOrigin = map.get("CBasePlayer::m_vecPreviouslyPredictedOrigin");
@@ -318,7 +318,7 @@ fn init() bool {
             std.log.debug("Cannot find CBasePlayer::m_flMaxspeed offset", .{});
         }
         if (m_bDucked == null) {
-            std.log.debug("Cannot find CPlayerLocalData::m_Local.m_bDucked offset", .{});
+            std.log.debug("Cannot find CBasePlayer::m_Local.CPlayerLocalData::m_bDucked offset", .{});
         }
         if (m_hGroundEntity == null) {
             std.log.debug("Cannot find CBaseEntity::m_hGroundEntity offset", .{});
@@ -362,7 +362,7 @@ fn init() bool {
         const m_vecAbsOrigin = map.get("C_BaseEntity::m_vecAbsOrigin");
         const m_vecAbsVelocity = map.get("C_BaseEntity::m_vecAbsVelocity");
         const m_flMaxspeed = map.get("C_BasePlayer::m_flMaxspeed");
-        const m_bDucked = map.get("CPlayerLocalData::m_Local.m_bDucked");
+        const m_bDucked = map.get("C_BasePlayer::m_Local.CPlayerLocalData::m_bDucked");
         const m_hGroundEntity = map.get("C_BasePlayer::m_hGroundEntity");
         const m_surfaceFriction = map.get("C_BasePlayer::m_surfaceFriction");
         const m_nWaterLevel = map.get("C_BasePlayer::m_nWaterLevel");
@@ -376,7 +376,7 @@ fn init() bool {
             std.log.debug("Cannot find C_BasePlayer::m_flMaxspeed offset", .{});
         }
         if (m_bDucked == null) {
-            std.log.debug("Cannot find CPlayerLocalData::m_Local.m_bDucked offset", .{});
+            std.log.debug("Cannot find C_BasePlayer::m_Local.CPlayerLocalData::m_bDucked offset", .{});
         }
         if (m_hGroundEntity == null) {
             std.log.debug("Cannot find C_BasePlayer::m_hGroundEntity offset", .{});
