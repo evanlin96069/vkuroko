@@ -1,5 +1,7 @@
 # vkuroko
 
+[![Actions Status](https://github.com/evanlin96069/vkuroko/actions/workflows/CI.yml/badge.svg)](https://github.com/evanlin96069/vkuroko/actions?query=branch%3Amaster)
+
 A Source Engine plugin that integrates [Kuroko](https://github.com/kuroko-lang/kuroko/) (a dialect of Python).
 
 More bindings and TAS support are still being developed.
@@ -18,5 +20,5 @@ Only Windows build.
 Use [zig 0.13.0](https://ziglang.org/download/#release-0.13.0)
 
 ```sh
-zig build -Doptimize=ReleaseSmall
+zig build
 ```

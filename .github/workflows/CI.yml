@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: 0.13.0
+      - name: Check Format
+        run: zig fmt --check .
+      - name: Build
+        run: zig build -Doptimize=ReleaseFast
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vkuroko
+          path: |
+            zig-out/bin/vkuroko.dll
+            zig-out/bin/vkuroko.pdb
