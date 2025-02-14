@@ -206,8 +206,8 @@ const ConVar = extern struct {
 
         const self = asConVar(argv[0]);
 
-        if (tier1.icvar.findVar(name) != null) {
-            return VM.getInstance().exceptions.valueError.runtimeError("name already exists.", .{min_value.value});
+        if (tier1.icvar.findCommandBase(name) != null) {
+            return VM.getInstance().exceptions.valueError.runtimeError("name already exists", .{});
         }
         var default_string: [*:0]const u8 = undefined;
         var buf: [32]u8 = undefined;
@@ -412,6 +412,10 @@ const ConCommand = extern struct {
             return KrkValue.noneValue();
         }
         const name = v_name.asString().chars;
+
+        if (tier1.icvar.findCommandBase(name) != null) {
+            return VM.getInstance().exceptions.valueError.runtimeError("name already exists", .{});
+        }
 
         const v_doc = callback.getAttributeDefault("__doc__", KrkValue.noneValue());
         var help_string: [*:0]const u8 = "";
