@@ -81,6 +81,15 @@ const IVEngineClient = extern struct {
         const _getLevelName: *const fn (this: *anyopaque) callconv(.Thiscall) [*:0]const u8 = @ptrCast(self._vt[VTIndex.getLevelName]);
         return _getLevelName(self);
     }
+
+    // basename without file extension
+    pub fn getMapName(self: *IVEngineClient) []const u8 {
+        const path = self.getLevelName();
+        const filename = std.fs.path.basename(std.mem.span(path));
+        const index = std.mem.lastIndexOfScalar(u8, filename, '.') orelse return filename;
+        if (index == 0) return filename;
+        return filename[0..index];
+    }
 };
 
 const IEngineTrace = extern struct {
