@@ -117,37 +117,6 @@ pub var client: *IVEngineClient = undefined;
 pub var trace_server: *IEngineTrace = undefined;
 pub var trace_client: *IEngineTrace = undefined;
 
-pub const SignonState = enum(c_int) {
-    none = 0,
-    challenge,
-    connected,
-    new,
-    prespawn,
-    spawn,
-    full,
-    changelevel,
-};
-
-fn hookedSetSignonState(this: *anyopaque, state: SignonState) callconv(.Thiscall) void {
-    origSetSignonState.?(this, state);
-
-    if (state == .full) {
-        event.session_start.emit(.{});
-    }
-}
-
-const SetSignonStateFunc = *const @TypeOf(hookedSetSignonState);
-var origSetSignonState: ?SetSignonStateFunc = null;
-
-const SetSignonState_patterns = zhook.mem.makePatterns(.{
-    // 5135
-    "56 8B F1 8B ?? ?? ?? ?? ?? 8B 01 8B 50 ?? FF D2 84 C0 75 ?? 8B",
-    // 1910503
-    "55 8B EC 56 8B F1 8B ?? ?? ?? ?? ?? 8B 01 8B 50 ?? FF D2 84",
-    // 7122284
-    "55 8B EC 56 8B F1 8B 0D ?? ?? ?? ?? 8B 01 8B 40 ?? FF D0 84 C0",
-});
-
 fn init() bool {
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
         std.log.err("Failed to get IVEngineServer interface", .{});
@@ -175,23 +144,6 @@ fn init() bool {
         std.log.err("Failed to get EngineTraceClient interface", .{});
         return false;
     });
-
-    origSetSignonState = core.hook_manager.findAndHook(
-        SetSignonStateFunc,
-        "engine",
-        SetSignonState_patterns,
-        hookedSetSignonState,
-    ) catch |e| blk: {
-        switch (e) {
-            error.PatternNotFound => std.log.debug("Failed to find SetSignonState", .{}),
-            else => std.log.debug("Failed to hook SetSignonState", .{}),
-        }
-        break :blk null;
-    };
-
-    if (origSetSignonState != null) {
-        event.session_start.works = true;
-    }
 
     return true;
 }

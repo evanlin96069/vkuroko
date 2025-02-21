@@ -83,15 +83,10 @@ fn onPaint() void {
     }
 }
 
-fn onSessionStart() void {
-    std.log.debug("Session Start!", .{});
-}
-
 fn init() bool {
     vkrk_hud_debug.register();
     vkrk_cmd_debug.register();
 
-    event.session_start.connect(onSessionStart);
     event.paint.connect(onPaint);
 
     return true;

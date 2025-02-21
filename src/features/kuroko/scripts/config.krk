@@ -1,0 +1,11 @@
+class _Config:
+  '''@brief Object for finding ConVar and ConCommand'''
+
+  def __getattr__(self, name):
+    let cvar = find_var(name)
+    if cvar is not None:
+      return cvar
+    return find_command(name)
+
+
+let cfg = _Config()

@@ -32,10 +32,10 @@ const modules: []const *Module = mods: {
 const features: []const *Feature = mods: {
     var mods: []const *Feature = &.{};
     for (&.{
-        @import("features/kuroko/kuroko.zig"),
         @import("features/datamap.zig"),
         @import("features/texthud.zig"),
         @import("features/playerio.zig"),
+        @import("features/kuroko/kuroko.zig"),
     }) |file| {
         mods = mods ++ .{&file.feature};
     }

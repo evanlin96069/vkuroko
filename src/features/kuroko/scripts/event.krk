@@ -1,0 +1,7 @@
+def event(event_name):
+    """Decorator to register functions as event handlers."""
+    def decorator(func):
+        _event_register(event_name, func)
+        return func
+    return decorator
+

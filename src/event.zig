@@ -36,7 +36,6 @@ fn Event(comptime CallbackFn: type) type {
 
 pub var paint = Event(*const fn () void).init(core.allocator);
 pub var tick = Event(*const fn () void).init(core.allocator);
-pub var session_start = Event(*const fn () void).init(core.allocator);
 pub var create_move = Event(*const fn (is_server: bool, cmd: *CUserCmd) void).init(core.allocator);
 
 pub fn init() void {
@@ -46,6 +45,5 @@ pub fn init() void {
 pub fn deinit() void {
     paint.deinit();
     tick.deinit();
-    session_start.deinit();
     create_move.deinit();
 }

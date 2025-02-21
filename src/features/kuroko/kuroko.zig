@@ -19,6 +19,8 @@ const StringBuilder = kuroko.StringBuilder;
 
 const vkrk_console = @import("vkrk_console.zig");
 const vkrk_game = @import("vkrk_game.zig");
+const vkrk_event = @import("vkrk_event.zig");
+const vkrk_hud = @import("vkrk_hud.zig");
 
 pub var feature: Feature = .{
     .name = "kuroko",
@@ -26,6 +28,9 @@ pub var feature: Feature = .{
     .init = init,
     .deinit = deinit,
 };
+
+const vkrk_module_name = "vkuroko";
+pub var vkrk_module: *KrkInstance = undefined;
 
 const krk_from_file = "<console>";
 
@@ -144,26 +149,16 @@ fn initKrkVM() void {
 }
 
 pub fn initVkurokoModule() void {
-    const module_name = "vkuroko";
-    const module = VM.startModule(module_name);
+    vkrk_module = VM.startModule(vkrk_module_name);
+    vkrk_module.setDoc("@brief Source Engine module.");
 
-    module.setDoc("@brief Source Engine module.");
+    vkrk_console.bindAttributes(vkrk_module);
+    vkrk_game.bindAttributes(vkrk_module);
+    vkrk_hud.bindAttributes(vkrk_module);
+    vkrk_event.bindAttributes(vkrk_module);
 
-    vkrk_console.bindAttributes(module);
-    vkrk_game.bindAttributes(module);
-
-    _ = VM.interpret(
-        \\class _Config:
-        \\  '''@brief Object for finding ConVar and ConCommand'''
-        \\
-        \\  def __getattr__(self, name):
-        \\    let cvar = find_var(name)
-        \\    if cvar is not None:
-        \\      return cvar
-        \\    return find_command(name)
-        \\
-        \\let cfg = _Config()
-    , module_name);
+    _ = VM.interpret(@embedFile("scripts/config.krk"), vkrk_module_name);
+    _ = VM.interpret(@embedFile("scripts/event.krk"), vkrk_module_name);
 }
 
 fn shouldLoad() bool {
@@ -191,11 +186,14 @@ fn init() bool {
     vkrk_run.register();
     krk_reset.register();
 
+    vkrk_event.init();
+
     return true;
 }
 
 fn deinit() void {
     vkrk_console.destroyDynCommands();
+    vkrk_event.deinit();
     VM.deinit();
 }
 
