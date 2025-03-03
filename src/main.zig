@@ -1,8 +1,14 @@
 const std = @import("std");
 
+const Hook = @import("zhook").Hook;
+
 const core = @import("core.zig");
 const interfaces = @import("interfaces.zig");
-const tier0 = @import("modules.zig").tier0;
+
+const modules = @import("modules.zig");
+const tier0 = modules.tier0;
+const vgui = modules.vgui;
+
 const event = @import("event.zig");
 
 pub const std_options: std.Options = .{
@@ -17,6 +23,32 @@ const IServerPluginCallbacks = extern struct {
 var plugin_loaded: bool = false;
 var skip_unload: bool = false;
 
+var vgui_connect_hook: Hook = undefined;
+
+fn deferLoad() !bool {
+    if (vgui.getEngineVGui()) |engine_vgui| {
+        if (engine_vgui.isInitialized()) {
+            return false;
+        }
+
+        const vtidx_connect = 4;
+        vgui_connect_hook = try Hook.hookVMT(engine_vgui._vt, vtidx_connect, hookedVGuiConnect);
+        errdefer vgui_connect_hook.unhook();
+
+        return true;
+    }
+
+    return error.ModuleNotFound;
+}
+
+const VGuiConnectFunc = *const @TypeOf(hookedVGuiConnect);
+
+fn hookedVGuiConnect(self: *anyopaque) callconv(.Thiscall) void {
+    @as(VGuiConnectFunc, @ptrCast(vgui_connect_hook.orig.?))(self);
+    _ = core.init();
+    vgui_connect_hook.unhook();
+}
+
 fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServerFactory: interfaces.CreateInterfaceFn) callconv(.Thiscall) bool {
     if (plugin_loaded) {
         std.log.warn("Plugin already loaded", .{});
@@ -27,6 +59,17 @@ fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServe
 
     interfaces.engineFactory = interfaceFactory;
     interfaces.serverFactory = gameServerFactory;
+
+    if (!core.init_core_modules()) {
+        return false;
+    }
+
+    if (deferLoad() catch blk: {
+        std.log.warn("SOME FEATURES MAY BE BROKEN!!!", .{});
+        break :blk false;
+    }) {
+        return true;
+    }
 
     if (!core.init()) {
         return false;

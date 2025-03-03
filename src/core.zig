@@ -14,11 +14,20 @@ pub var hook_manager: HookManager = undefined;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 pub const allocator = gpa.allocator();
 
-const modules: []const *Module = mods: {
+const core_modules: []const *Module = mods: {
     var mods: []const *Module = &.{};
     for (&.{
         @import("modules/tier0.zig"),
         @import("modules/tier1.zig"),
+    }) |file| {
+        mods = mods ++ .{&file.module};
+    }
+    break :mods mods;
+};
+
+const modules: []const *Module = mods: {
+    var mods: []const *Module = &.{};
+    for (&.{
         @import("modules/engine.zig"),
         @import("modules/server.zig"),
         @import("modules/client.zig"),
@@ -47,6 +56,18 @@ const features: []const *Feature = mods: {
     break :mods mods;
 };
 
+pub fn init_core_modules() bool {
+    for (core_modules) |module| {
+        module.loaded = module.init();
+        if (!module.loaded) {
+            std.log.err("Failed to load module {s}.", .{module.name});
+            return false;
+        }
+        std.log.debug("Module {s} loaded.", .{module.name});
+    }
+    return true;
+}
+
 pub fn init() bool {
     event.init();
     hook_manager = HookManager.init(allocator);
@@ -60,6 +81,12 @@ pub fn init() bool {
         std.log.debug("Module {s} loaded.", .{module.name});
     }
 
+    init_features();
+
+    return true;
+}
+
+fn init_features() void {
     for (features) |feature| {
         if (feature.shouldLoad()) {
             feature.loaded = feature.init();
@@ -72,8 +99,6 @@ pub fn init() bool {
             std.log.warn("Skipped loading feature {s}.", .{feature.name});
         }
     }
-
-    return true;
 }
 
 pub fn deinit() void {

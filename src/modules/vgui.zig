@@ -52,7 +52,11 @@ const IPanel = extern struct {
 };
 
 const IEngineVGui = extern struct {
-    _vt: *align(@alignOf(*anyopaque)) const anyopaque = undefined,
+    _vt: [*]*const anyopaque,
+
+    const VTIndex = struct {
+        const isInitialized: usize = 7;
+    };
 
     const VTable = extern struct {
         destruct: *const anyopaque,
@@ -66,6 +70,11 @@ const IEngineVGui = extern struct {
 
     pub fn isGameUIVisible(self: *IEngineVGui) bool {
         return self.vt().isGameUIVisible(self);
+    }
+
+    pub fn isInitialized(self: *IEngineVGui) bool {
+        const _isInitialized: *const fn (this: *anyopaque) callconv(.Thiscall) bool = @ptrCast(self._vt[VTIndex.isInitialized]);
+        return _isInitialized(self);
     }
 };
 
@@ -212,6 +221,10 @@ var ipanel: *IPanel = undefined;
 var ischeme_mgr: *ISchemeManager = undefined;
 pub var ischeme: *IScheme = undefined;
 
+pub fn getEngineVGui() ?*IEngineVGui {
+    return @ptrCast(interfaces.engineFactory("VEngineVGui001", null));
+}
+
 fn init() bool {
     const imatsystem_info = interfaces.create(interfaces.engineFactory, "MatSystemSurface", .{ 6, 8 }) orelse {
         std.log.err("Failed to get IMatSystem interface", .{});
@@ -248,10 +261,10 @@ fn init() bool {
         return false;
     };
 
-    ienginevgui = @ptrCast(interfaces.engineFactory("VEngineVGui001", null) orelse {
+    ienginevgui = getEngineVGui() orelse {
         std.log.err("Failed to get IEngineVgui interface", .{});
         return false;
-    });
+    };
 
     ipanel = @ptrCast(interfaces.engineFactory("VGUI_Panel009", null) orelse {
         std.log.err("Failed to get IPanel interface", .{});
