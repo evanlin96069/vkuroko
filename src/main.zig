@@ -51,7 +51,7 @@ fn hookedVGuiConnect(self: *anyopaque) callconv(.Thiscall) void {
 
 fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServerFactory: interfaces.CreateInterfaceFn) callconv(.Thiscall) bool {
     if (plugin_loaded) {
-        std.log.warn("Plugin already loaded", .{});
+        core.log.err("Plugin already loaded", .{});
         skip_unload = true;
         return false;
     }
@@ -65,7 +65,7 @@ fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServe
     }
 
     if (deferLoad() catch blk: {
-        std.log.warn("SOME FEATURES MAY BE BROKEN!!!", .{});
+        core.log.warn("SOME FEATURES MAY BE BROKEN!!!", .{});
         break :blk false;
     }) {
         return true;

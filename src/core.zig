@@ -1,13 +1,13 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const event = @import("event.zig");
-
+const sdk = @import("sdk");
 const tier0 = @import("modules/tier0.zig");
 const Module = @import("modules/Module.zig");
 const Feature = @import("features/Feature.zig");
-
+const event = @import("event.zig");
 const HookManager = @import("zhook").HookManager;
+const colorLog = @import("log.zig").colorLog;
 
 pub const log = std.log.scoped(.vkuroko);
 
@@ -91,6 +91,8 @@ pub fn init() bool {
     }
 
     init_features();
+    log.info("Successfully loaded", .{});
+    print_feature_status();
 
     return true;
 }
@@ -100,12 +102,29 @@ fn init_features() void {
         if (feature.shouldLoad()) {
             feature.loaded = feature.init();
             if (!feature.loaded) {
+                feature.status = .failed;
                 log.warn("Failed to load feature {s}.", .{feature.name});
             } else {
+                feature.status = .ok;
                 log.debug("Feature {s} loaded.", .{feature.name});
             }
         } else {
+            feature.status = .skipped;
             log.info("Skipped loading feature {s}.", .{feature.name});
+        }
+    }
+}
+
+fn print_feature_status() void {
+    const green: sdk.Color = .{ .r = 128, .g = 255, .b = 128 };
+    const red: sdk.Color = .{ .r = 255, .g = 128, .b = 128 };
+    const cyan: sdk.Color = .{ .r = 100, .g = 255, .b = 255 };
+    std.log.info("---- List of plugin features ---", .{});
+    for (features) |feature| {
+        switch (feature.status) {
+            .ok => colorLog(green, " [     OK!     ] {s}", .{feature.name}),
+            .failed => colorLog(red, " [   FAILED!   ] {s}", .{feature.name}),
+            .skipped, .none => colorLog(cyan, " [   skipped   ] {s}", .{feature.name}),
         }
     }
 }

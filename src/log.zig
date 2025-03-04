@@ -4,7 +4,6 @@ const tier0 = @import("modules.zig").tier0;
 
 const Context = union(enum) {
     color: sdk.Color,
-    info: void,
     dev: void,
 };
 
@@ -19,7 +18,6 @@ fn writeFn(ctx: Context, bytes: []const u8) error{}!usize {
 
     switch (ctx) {
         .color => |c| tier0.colorMsg(&c, "%.*s", bytes.len, bytes.ptr),
-        .info => tier0.msg("%.*s", bytes.len, bytes.ptr),
         .dev => tier0.devMsg("%.*s", bytes.len, bytes.ptr),
     }
     return bytes.len;
@@ -39,7 +37,17 @@ pub fn log(
     const ctx: Context = switch (level) {
         .err => .{ .color = .{ .r = 255, .g = 90, .b = 90 } },
         .warn => .{ .color = .{ .r = 255, .g = 190, .b = 60 } },
-        .info => .info,
+        .info => .{
+            .color = if (scope == .default) .{
+                .r = 255,
+                .g = 255,
+                .b = 255,
+            } else .{
+                .r = 100,
+                .g = 255,
+                .b = 255,
+            },
+        },
         .debug => .dev,
     };
 
@@ -49,6 +57,20 @@ pub fn log(
     std.fmt.format(
         std.io.Writer(Context, error{}, writeFn){ .context = ctx },
         scope_prefix ++ format ++ "\n",
+        args,
+    ) catch unreachable;
+}
+
+pub fn colorLog(
+    color: sdk.Color,
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    std.fmt.format(
+        std.io.Writer(Context, error{}, writeFn){ .context = .{
+            .color = color,
+        } },
+        format ++ "\n",
         args,
     ) catch unreachable;
 }

@@ -1,6 +1,8 @@
 const std = @import("std");
 const DynLib = @import("utils/DynLib.zig");
 
+const core = @import("core.zig");
+
 pub const CreateInterfaceFn = *const fn (name: [*:0]const u8, ret: ?*c_int) callconv(.C) ?*align(@alignOf(*anyopaque)) anyopaque;
 
 pub var engineFactory: CreateInterfaceFn = undefined;
@@ -33,7 +35,7 @@ pub fn create(factory: CreateInterfaceFn, comptime name: []const u8, comptime ve
         }
         const version_string = comptime std.fmt.comptimePrint("{s}{d:0>3}", .{ name, version });
         if (factory(version_string, null)) |interface| {
-            std.log.debug("Using {s}", .{version_string});
+            core.log.debug("Using {s}", .{version_string});
             return InterfaceInfo{
                 .version = version,
                 .interface = interface,
