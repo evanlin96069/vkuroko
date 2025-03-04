@@ -14,6 +14,8 @@ const KrkList = kuroko.KrkList;
 const KrkInstance = kuroko.KrkInstance;
 const KrkClass = kuroko.KrkClass;
 
+const log = @import("kuroko.zig").log;
+
 const str_utils = @import("../../utils/str_utils.zig");
 
 pub fn bindAttributes(module: *KrkInstance) void {
@@ -647,7 +649,7 @@ const DynConCommand = struct {
 
     fn vkrkCommandCallback(args: *const tier1.CCommand) callconv(.C) void {
         if (args.argc < 1) {
-            std.log.warn("vkrk: No command name.", .{});
+            log.warn("No command name.", .{});
             return;
         }
 
@@ -666,7 +668,7 @@ const DynConCommand = struct {
             _ = VM.callStack(1);
             VM.resetStack();
         } else {
-            std.log.warn("vkrk: Unknown command.", .{});
+            log.warn("Unknown command.", .{});
         }
     }
 
@@ -685,7 +687,7 @@ const DynConCommand = struct {
         while (i < count) : (i += 1) {
             const value = values[i];
             if (!value.isString()) {
-                std.log.warn("vkrk: Command completion expects to return an iterable of strings.", .{});
+                log.warn("Command completion expects to return an iterable of strings.", .{});
                 return 1;
             }
 
@@ -721,7 +723,7 @@ const DynConCommand = struct {
             VM.resetStack();
             return @intCast(context.count);
         } else {
-            std.log.warn("vkrk: Unknown command to complete.", .{});
+            log.warn("Unknown command to complete.", .{});
         }
 
         return 0;

@@ -2,6 +2,7 @@ const std = @import("std");
 
 const interfaces = @import("../interfaces.zig");
 const tier0 = @import("tier0.zig");
+const core = @import("../core.zig");
 const FileCompletion = @import("../utils/completion.zig").FileCompletion;
 
 const Module = @import("Module.zig");
@@ -449,18 +450,18 @@ pub var module: Module = .{
 
 fn init() bool {
     icvar = @ptrCast(interfaces.engineFactory("VEngineCvar004", null) orelse {
-        std.log.err("Failed to get ICvar interface", .{});
+        core.log.err("Failed to get ICvar interface", .{});
         return false;
     });
 
     icvar.allocateDLLIDentifier();
 
     const cvar = icvar.findVar("sv_gravity") orelse {
-        std.log.err("Failed to get ConVar vtable", .{});
+        core.log.err("Failed to get ConVar vtable", .{});
         return false;
     };
     const cmd = icvar.findCommand("kill") orelse {
-        std.log.err("Failed to get ConCommand vtable", .{});
+        core.log.err("Failed to get ConCommand vtable", .{});
         return false;
     };
 

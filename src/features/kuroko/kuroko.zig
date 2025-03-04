@@ -22,6 +22,8 @@ const vkrk_game = @import("vkrk_game.zig");
 const vkrk_event = @import("vkrk_event.zig");
 const vkrk_hud = @import("vkrk_hud.zig");
 
+pub const log = std.log.scoped(.kuroko);
+
 pub var feature: Feature = .{
     .name = "kuroko",
     .shouldLoad = shouldLoad,

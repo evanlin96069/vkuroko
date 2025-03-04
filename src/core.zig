@@ -9,6 +9,8 @@ const Feature = @import("features/Feature.zig");
 
 const HookManager = @import("zhook").HookManager;
 
+pub const log = std.log.scoped(.vkuroko);
+
 pub var hook_manager: HookManager = undefined;
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -60,10 +62,10 @@ pub fn init_core_modules() bool {
     for (core_modules) |module| {
         module.loaded = module.init();
         if (!module.loaded) {
-            std.log.err("Failed to load module {s}.", .{module.name});
+            log.err("Failed to load module {s}.", .{module.name});
             return false;
         }
-        std.log.debug("Module {s} loaded.", .{module.name});
+        log.debug("Module {s} loaded.", .{module.name});
     }
     return true;
 }
@@ -72,13 +74,20 @@ pub fn init() bool {
     event.init();
     hook_manager = HookManager.init(allocator);
 
+    var all_modules_loaded: bool = true;
     for (modules) |module| {
         module.loaded = module.init();
         if (!module.loaded) {
-            std.log.err("Failed to load module {s}.", .{module.name});
-            return false;
+            log.err("Failed to load module {s}.", .{module.name});
+            all_modules_loaded = false;
+        } else {
+            log.debug("Module {s} loaded.", .{module.name});
         }
-        std.log.debug("Module {s} loaded.", .{module.name});
+    }
+
+    if (!all_modules_loaded) {
+        log.err("Failed to load all modules. Stop loading features.", .{});
+        return false;
     }
 
     init_features();
@@ -91,18 +100,18 @@ fn init_features() void {
         if (feature.shouldLoad()) {
             feature.loaded = feature.init();
             if (!feature.loaded) {
-                std.log.warn("Failed to load feature {s}.", .{feature.name});
+                log.warn("Failed to load feature {s}.", .{feature.name});
             } else {
-                std.log.debug("Feature {s} loaded.", .{feature.name});
+                log.debug("Feature {s} loaded.", .{feature.name});
             }
         } else {
-            std.log.warn("Skipped loading feature {s}.", .{feature.name});
+            log.info("Skipped loading feature {s}.", .{feature.name});
         }
     }
 }
 
 pub fn deinit() void {
-    for (modules) |module| {
+    for (core_modules ++ modules) |module| {
         if (!module.loaded) {
             continue;
         }
@@ -122,9 +131,8 @@ pub fn deinit() void {
     event.deinit();
 
     const leak_check = gpa.deinit();
-    tier0.module.loaded = true;
     if (leak_check == .leak) {
-        std.log.warn("vkuroko: Memory leak detected", .{});
+        log.warn("Memory leak detected", .{});
     }
     tier0.module.loaded = false;
 }

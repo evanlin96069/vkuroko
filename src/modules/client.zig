@@ -106,17 +106,17 @@ pub var mainViewAngles: *const fn () callconv(.C) *const QAngle = undefined;
 
 fn init() bool {
     const clientFactory = interfaces.getFactory("client.dll") orelse {
-        std.log.err("Failed to get client interface factory", .{});
+        core.log.err("Failed to get client interface factory", .{});
         return false;
     };
 
     entlist = @ptrCast(clientFactory("VClientEntityList003", null) orelse {
-        std.log.err("Failed to get IClientEntityList interface", .{});
+        core.log.err("Failed to get IClientEntityList interface", .{});
         return false;
     });
 
     const vclient_info = interfaces.create(clientFactory, "VClient", .{ 15, 17 }) orelse {
-        std.log.err("Failed to get VClient interface", .{});
+        core.log.err("Failed to get VClient interface", .{});
         return false;
     };
     vclient = @ptrCast(vclient_info.interface);
@@ -131,7 +131,7 @@ fn init() bool {
     }
 
     iinput = vclient.findIInput() orelse {
-        std.log.err("Failed to find IInput interface", .{});
+        core.log.err("Failed to find IInput interface", .{});
         return false;
     };
 
@@ -141,7 +141,7 @@ fn init() bool {
         IInput.VTIndex.createMove,
         IInput.hookedCreateMove,
     ) catch {
-        std.log.err("Failed to hook CreateMove", .{});
+        core.log.err("Failed to hook CreateMove", .{});
         return false;
     };
 
@@ -151,7 +151,7 @@ fn init() bool {
         IInput.VTIndex.decodeUserCmdFromBuffer,
         IInput.hookedDecodeUserCmdFromBuffer,
     ) catch {
-        std.log.err("Failed to hook DecodeUserCmdFromBuffer", .{});
+        core.log.err("Failed to hook DecodeUserCmdFromBuffer", .{});
         return false;
     };
 
@@ -159,7 +159,7 @@ fn init() bool {
 
     const client = zhook.mem.getModule("client") orelse return false;
     const GetDamagePosition_match = zhook.mem.scanUniquePatterns(client, GetDamagePosition_patterns) orelse {
-        std.log.err("Failed to find CHudDamageIndicator::GetDamagePosition", .{});
+        core.log.err("Failed to find CHudDamageIndicator::GetDamagePosition", .{});
         return false;
     };
 

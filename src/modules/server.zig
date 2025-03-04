@@ -231,7 +231,7 @@ pub var gm: *CGameMovement = undefined;
 
 fn init() bool {
     gm = @ptrCast(interfaces.serverFactory("GameMovement001", null) orelse {
-        std.log.err("Failed to get IGameMovement interface", .{});
+        core.log.err("Failed to get IGameMovement interface", .{});
         return false;
     });
 
@@ -323,11 +323,11 @@ fn init() bool {
             }
         }
     } else {
-        std.log.debug("Failed to find CheckJumpButton", .{});
+        core.log.debug("Failed to find CheckJumpButton", .{});
     }
 
     if (!canTracePlayerBBox()) {
-        std.log.warn("Cannot trace player bounding box", .{});
+        core.log.warn("Cannot trace player bounding box", .{});
     }
 
     return true;

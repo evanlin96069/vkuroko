@@ -119,29 +119,29 @@ pub var trace_client: *IEngineTrace = undefined;
 
 fn init() bool {
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
-        std.log.err("Failed to get IVEngineServer interface", .{});
+        core.log.err("Failed to get IVEngineServer interface", .{});
         return false;
     });
 
     const client_info = interfaces.create(interfaces.engineFactory, "VEngineClient", .{ 13, 14 }) orelse {
-        std.log.err("Failed to get IVEngineClient interface", .{});
+        core.log.err("Failed to get IVEngineClient interface", .{});
         return false;
     };
     client = @ptrCast(client_info.interface);
     sdk_version = if (client_info.version == 14) 2013 else 2007;
 
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
-        std.log.err("Failed to get IVEngineServer interface", .{});
+        core.log.err("Failed to get IVEngineServer interface", .{});
         return false;
     });
 
     trace_server = @ptrCast(interfaces.engineFactory("EngineTraceServer003", null) orelse {
-        std.log.err("Failed to get EngineTraceServer interface", .{});
+        core.log.err("Failed to get EngineTraceServer interface", .{});
         return false;
     });
 
     trace_client = @ptrCast(interfaces.engineFactory("EngineTraceClient003", null) orelse {
-        std.log.err("Failed to get EngineTraceClient interface", .{});
+        core.log.err("Failed to get EngineTraceClient interface", .{});
         return false;
     });
 

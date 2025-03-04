@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const sdk = @import("sdk");
+
 const Module = @import("Module.zig");
 const DynLib = @import("../utils/DynLib.zig");
 
@@ -16,7 +18,9 @@ fn init() bool {
     const names = .{
         .msg = "Msg",
         .warning = "Warning",
+        .colorMsg = "?ConColorMsg@@YAXABVColor@@PBDZZ",
         .devMsg = "?DevMsg@@YAXPBDZZ",
+        .devWarning = "?DevWarning@@YAXPBDZZ",
     };
 
     inline for (comptime std.meta.fieldNames(@TypeOf(names))) |field| {
@@ -27,6 +31,8 @@ fn init() bool {
 
     memalloc = (lib.lookup(**MemAlloc, "g_pMemAlloc") orelse return false).*;
 
+    ready = true;
+
     return true;
 }
 
@@ -35,7 +41,10 @@ fn deinit() void {}
 pub const FmtFn = *const fn (fmt: [*:0]const u8, ...) callconv(.C) void;
 pub var msg: FmtFn = undefined;
 pub var warning: FmtFn = undefined;
+pub var colorMsg: *const fn (color: *const sdk.Color, fmt: [*:0]const u8, ...) callconv(.C) void = undefined;
 pub var devMsg: FmtFn = undefined;
+pub var devWarning: FmtFn = undefined;
+pub var ready: bool = false;
 
 var memalloc: ?*MemAlloc = null;
 

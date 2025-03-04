@@ -1,12 +1,14 @@
 const std = @import("std");
-
+const sdk = @import("sdk");
 const tier0 = @import("modules.zig").tier0;
 
-const Context = struct {
-    fmtFn: tier0.FmtFn,
+const Context = union(enum) {
+    color: sdk.Color,
+    info: void,
+    dev: void,
 };
 
-fn writeFn(context: Context, bytes: []const u8) error{}!usize {
+fn writeFn(ctx: Context, bytes: []const u8) error{}!usize {
     if (bytes[0] == 0x1B) {
         // Console color code, possibly from a stack trace.
         // Ignore up to the terminating 'm'
@@ -14,7 +16,12 @@ fn writeFn(context: Context, bytes: []const u8) error{}!usize {
             return len + 1;
         }
     }
-    context.fmtFn("%.*s", bytes.len, bytes.ptr);
+
+    switch (ctx) {
+        .color => |c| tier0.colorMsg(&c, "%.*s", bytes.len, bytes.ptr),
+        .info => tier0.msg("%.*s", bytes.len, bytes.ptr),
+        .dev => tier0.devMsg("%.*s", bytes.len, bytes.ptr),
+    }
     return bytes.len;
 }
 
@@ -26,21 +33,21 @@ pub fn log(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    if (!tier0.module.loaded) return;
+    if (!tier0.ready) return;
 
     const scope_prefix = if (scope == .default) "" else ("[" ++ @tagName(scope) ++ "] ");
-    const context: Context = switch (level) {
-        .err => .{ .fmtFn = tier0.warning },
-        .warn => .{ .fmtFn = tier0.warning },
-        .info => .{ .fmtFn = tier0.msg },
-        .debug => .{ .fmtFn = tier0.devMsg },
+    const ctx: Context = switch (level) {
+        .err => .{ .color = .{ .r = 255, .g = 90, .b = 90 } },
+        .warn => .{ .color = .{ .r = 255, .g = 190, .b = 60 } },
+        .info => .info,
+        .debug => .dev,
     };
 
     log_mutex.lock();
     defer log_mutex.unlock();
 
     std.fmt.format(
-        std.io.Writer(Context, error{}, writeFn){ .context = context },
+        std.io.Writer(Context, error{}, writeFn){ .context = ctx },
         scope_prefix ++ format ++ "\n",
         args,
     ) catch unreachable;

@@ -2,6 +2,8 @@ const std = @import("std");
 
 const event = @import("../event.zig");
 
+const core = @import("../core.zig");
+
 const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const vgui = modules.vgui;
@@ -44,6 +46,11 @@ fn cmd_debug_Fn(args: *const tier1.CCommand) callconv(.C) void {
     while (i < args.argc) : (i += 1) {
         std.log.info("argv[{d}] = \"{s}\"", .{ i, args.argv[i] });
     }
+
+    core.log.info("This is an info.", .{});
+    core.log.warn("This is a warning.", .{});
+    core.log.err("This is an error.", .{});
+    core.log.debug("This is a debug message.", .{});
 }
 
 fn shouldLoad() bool {

@@ -227,7 +227,7 @@ pub fn getEngineVGui() ?*IEngineVGui {
 
 fn init() bool {
     const imatsystem_info = interfaces.create(interfaces.engineFactory, "MatSystemSurface", .{ 6, 8 }) orelse {
-        std.log.err("Failed to get IMatSystem interface", .{});
+        core.log.err("Failed to get IMatSystem interface", .{});
         return false;
     };
     imatsystem = @ptrCast(imatsystem_info.interface);
@@ -252,22 +252,22 @@ fn init() bool {
     }
 
     ischeme_mgr = @ptrCast(interfaces.engineFactory("VGUI_Scheme010", null) orelse {
-        std.log.err("Failed to get ISchemeManager interface", .{});
+        core.log.err("Failed to get ISchemeManager interface", .{});
         return false;
     });
 
     ischeme = ischeme_mgr.getIScheme(ischeme_mgr.getDefaultScheme()) orelse {
-        std.log.err("Failed to get IScheme", .{});
+        core.log.err("Failed to get IScheme", .{});
         return false;
     };
 
     ienginevgui = getEngineVGui() orelse {
-        std.log.err("Failed to get IEngineVgui interface", .{});
+        core.log.err("Failed to get IEngineVgui interface", .{});
         return false;
     };
 
     ipanel = @ptrCast(interfaces.engineFactory("VGUI_Panel009", null) orelse {
-        std.log.err("Failed to get IPanel interface", .{});
+        core.log.err("Failed to get IPanel interface", .{});
         return false;
     });
 
@@ -277,7 +277,7 @@ fn init() bool {
         IPanel.VTIndex.paintTraverse,
         IPanel.hookedPaintTraverse,
     ) catch {
-        std.log.err("Failed to hook PaintTraverse", .{});
+        core.log.err("Failed to hook PaintTraverse", .{});
         return false;
     };
     event.paint.works = true;
@@ -289,8 +289,8 @@ fn init() bool {
         hookedCFPSPanelShouldDraw,
     ) catch |e| blk: {
         switch (e) {
-            error.PatternNotFound => std.log.debug("Failed to hook CFPSPanel::ShouldDraw", .{}),
-            else => std.log.debug("Failed to hook CFPSPanel::ShouldDraw", .{}),
+            error.PatternNotFound => core.log.debug("Cannot find CFPSPanel::ShouldDraw", .{}),
+            else => core.log.debug("Failed to hook CFPSPanel::ShouldDraw", .{}),
         }
         break :blk null;
     };
