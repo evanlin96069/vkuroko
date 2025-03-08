@@ -1,8 +1,11 @@
 const std = @import("std");
 const testing = std.testing;
 
-const isHex = @import("utils.zig").isHex;
-const makeHex = @import("utils.zig").makeHex;
+const utils = @import("utils.zig");
+const windows = utils.windows;
+
+const isHex = utils.isHex;
+const makeHex = utils.makeHex;
 
 pub fn makePattern(comptime str: []const u8) []const ?u8 {
     return comptime blk: {
@@ -198,9 +201,9 @@ test "Load value from memory" {
 pub fn getModule(comptime module_name: []const u8) ?[]const u8 {
     const dll_name = module_name ++ ".dll";
     const path_w = std.unicode.utf8ToUtf16LeStringLiteral(dll_name);
-    const dll = std.os.windows.kernel32.GetModuleHandleW(path_w) orelse return null;
-    var info: std.os.windows.MODULEINFO = undefined;
-    if (std.os.windows.kernel32.K32GetModuleInformation(std.os.windows.kernel32.GetCurrentProcess(), dll, &info, @sizeOf(std.os.windows.MODULEINFO)) == 0) {
+    const dll = windows.GetModuleHandleW(path_w) orelse return null;
+    var info: windows.MODULEINFO = undefined;
+    if (windows.GetModuleInformation(windows.GetCurrentProcess(), dll, &info, @sizeOf(windows.MODULEINFO)) == 0) {
         return null;
     }
     const mem: [*]const u8 = @ptrCast(dll);

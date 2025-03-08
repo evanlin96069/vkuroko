@@ -1,15 +1,11 @@
 const std = @import("std");
 
 const x86 = @import("x86.zig");
+const windows = @import("utils.zig").windows;
 
 const loadValue = @import("mem.zig").loadValue;
 
 const Hook = @This();
-
-const windows = @cImport({
-    @cDefine("WIN32_LEAN_AND_MEAN", "1");
-    @cInclude("windows.h");
-});
 
 const HookType = enum {
     vmt,

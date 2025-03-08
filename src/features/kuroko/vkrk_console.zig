@@ -148,7 +148,7 @@ fn find_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C
     };
 
     const inst = KrkInstance.create(ConCommand.class);
-    const command_inst: *ConCommand = @ptrCast(inst);
+    const command_inst: *ConCommand = @alignCast(@ptrCast(inst));
     command_inst.command = command;
 
     return inst.asValue();
@@ -403,7 +403,7 @@ const ConCommand = extern struct {
         return v.isInstanceOf(class);
     }
 
-    fn asConCommand(v: KrkValue) *ConCommand {
+    fn asConCommand(v: KrkValue) *align(4) ConCommand {
         return @ptrCast(v.asObject());
     }
 

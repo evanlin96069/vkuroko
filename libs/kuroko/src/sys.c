@@ -17,7 +17,9 @@
 #define KRK_VERSION_EXTRA KRK_VERSION_EXTRA_BASE "-static"
 #endif
 
+#ifndef KRK_BUILD_DATE
 #define KRK_BUILD_DATE     __DATE__ " at " __TIME__
+#endif
 
 #if (defined(__GNUC__) || defined(__GNUG__)) && !(defined(__clang__) || defined(__INTEL_COMPILER))
 # define KRK_BUILD_COMPILER "GCC " __VERSION__

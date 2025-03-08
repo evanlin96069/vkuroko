@@ -530,7 +530,7 @@ fn mrmsib(b: [*]const u8, address_len: usize) usize {
 
 fn is_field(comptime T: type, byte: u8) bool {
     @setEvalBranchQuota(100000);
-    for (@typeInfo(T).Struct.decls) |decl| {
+    for (@typeInfo(T).@"struct".decls) |decl| {
         const decl_ptr = &@field(T, decl.name);
         if (decl_ptr.* == byte) {
             return true;

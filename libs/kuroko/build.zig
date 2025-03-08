@@ -73,6 +73,7 @@ pub fn link(
             "libtime.c",
         },
         .flags = &.{
+            "-DKRK_BUILD_DATE=\"Feb 27 2025\"", // Date of commit 0ae991c68e0dd58bd12d1f05172bc07c1454a439
             "-DKRK_BUNDLE_LIBS",
             "-DKRK_DISABLE_THREADS",
         },

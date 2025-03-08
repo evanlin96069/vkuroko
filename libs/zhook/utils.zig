@@ -1,5 +1,11 @@
 const std = @import("std");
 
+pub const windows = @cImport({
+    @cDefine("WIN32_LEAN_AND_MEAN", "1");
+    @cInclude("windows.h");
+    @cInclude("psapi.h");
+});
+
 pub inline fn isHex(c: u8) bool {
     return (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
 }

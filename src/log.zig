@@ -27,7 +27,7 @@ var log_mutex: std.Thread.Mutex = .{};
 
 pub fn log(
     comptime level: std.log.Level,
-    comptime scope: @Type(.EnumLiteral),
+    comptime scope: @TypeOf(.enum_literal),
     comptime format: []const u8,
     args: anytype,
 ) void {

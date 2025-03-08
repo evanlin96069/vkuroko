@@ -513,14 +513,14 @@ pub const KrkValue = packed struct(u64) {
         const class = KrkVM.getInstance().base_classes.listClass;
         return v.isInstance() and
             (@intFromPtr(v.asInstance()._class) == @intFromPtr(class) or
-            v.isInstanceOf(class));
+                v.isInstanceOf(class));
     }
 
     pub inline fn isDict(v: KrkValue) bool {
         const class = KrkVM.getInstance().base_classes.dictClass;
         return v.isInstance() and
             (@intFromPtr(v.asInstance()._class) == @intFromPtr(class) or
-            v.isInstanceOf(class));
+                v.isInstanceOf(class));
     }
 
     pub inline fn isDictitems(v: KrkValue) bool {

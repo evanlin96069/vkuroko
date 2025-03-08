@@ -9,6 +9,11 @@ const event = @import("event.zig");
 const HookManager = @import("zhook").HookManager;
 const colorLog = @import("log.zig").colorLog;
 
+pub const windows = @cImport({
+    @cDefine("WIN32_LEAN_AND_MEAN", "1");
+    @cInclude("windows.h");
+});
+
 pub const log = std.log.scoped(.vkuroko);
 
 pub var hook_manager: HookManager = undefined;

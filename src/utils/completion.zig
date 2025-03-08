@@ -3,6 +3,7 @@ const std = @import("std");
 const str_utils = @import("str_utils.zig");
 
 const core = @import("../core.zig");
+const windows = core.windows;
 const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const ConCommand = tier1.ConCommand;
@@ -170,19 +171,19 @@ pub const FileCompletion = struct {
             const w_path = try std.unicode.utf8ToUtf16LeAllocZ(core.allocator, path);
             defer core.allocator.free(w_path);
 
-            var fd: std.os.windows.WIN32_FIND_DATAW = undefined;
-            const h_find = std.os.windows.kernel32.FindFirstFileW(w_path, &fd);
-            if (h_find == std.os.windows.INVALID_HANDLE_VALUE) {
+            var fd: windows.WIN32_FIND_DATAW = undefined;
+            const h_find = windows.FindFirstFileW(w_path, &fd);
+            if (h_find == windows.INVALID_HANDLE_VALUE) {
                 return 0;
             }
-            defer std.os.windows.FindClose(h_find);
+            defer _ = windows.FindClose(h_find);
 
             while (true) {
                 const len = std.mem.indexOf(u16, &fd.cFileName, &[_]u16{0}).?;
                 const name = try std.unicode.utf16LeToUtf8Alloc(core.allocator, fd.cFileName[0..len]);
                 defer core.allocator.free(name);
 
-                if (fd.dwFileAttributes & std.os.windows.FILE_ATTRIBUTE_DIRECTORY != 0) {
+                if (fd.dwFileAttributes & windows.FILE_ATTRIBUTE_DIRECTORY != 0) {
                     if (!std.mem.eql(u8, name, ".") and !std.mem.eql(u8, name, "..")) {
                         const s = try std.fmt.allocPrint(core.allocator, "{s}/", .{name});
                         errdefer core.allocator.free(s);
@@ -197,7 +198,7 @@ pub const FileCompletion = struct {
                     }
                 }
 
-                if (std.os.windows.kernel32.FindNextFileW(h_find, &fd) == std.os.windows.FALSE) {
+                if (windows.FindNextFileW(h_find, &fd) == windows.FALSE) {
                     break;
                 }
             }

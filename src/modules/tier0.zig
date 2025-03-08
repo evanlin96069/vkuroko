@@ -87,14 +87,15 @@ const Tier0Allocator = struct {
             .vtable = &.{
                 .alloc = alloc,
                 .resize = resize,
+                .remap = remap,
                 .free = free,
             },
         };
     }
 
-    fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+    fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
         _ = ctx;
-        _ = ptr_align;
+        _ = alignment;
         _ = ret_addr;
 
         if (memalloc) |ptr| {
@@ -103,24 +104,35 @@ const Tier0Allocator = struct {
         return null;
     }
 
-    fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+    fn resize(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
         _ = ctx;
-        _ = buf_align;
+        _ = alignment;
         _ = ret_addr;
 
-        if (new_len <= buf.len) {
+        if (new_len <= memory.len) {
             return true;
         }
         return false;
     }
 
-    fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+    fn remap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
         _ = ctx;
-        _ = buf_align;
+        _ = alignment;
         _ = ret_addr;
 
         if (memalloc) |ptr| {
-            ptr.free(buf.ptr);
+            return ptr.realloc(memory.ptr, new_len);
+        }
+        return null;
+    }
+
+    fn free(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
+        _ = ctx;
+        _ = alignment;
+        _ = ret_addr;
+
+        if (memalloc) |ptr| {
+            ptr.free(memory.ptr);
         }
     }
 };
