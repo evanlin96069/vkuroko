@@ -1,5 +1,39 @@
 const std = @import("std");
 
+pub fn CUtlMemory(T: anytype) type {
+    return extern struct {
+        memory: [*]T,
+        allocation_count: c_int,
+        grow_size: c_int,
+    };
+}
+
+pub fn CUtlVector(T: anytype) type {
+    return extern struct {
+        memory: CUtlMemory(T),
+        size: c_uint,
+        element: [*]T,
+    };
+}
+
+pub const IServerPluginCallbacks = extern struct {
+    _vt: *align(@alignOf(*anyopaque)) const anyopaque,
+};
+
+pub const CPlugin = extern struct {
+    name: [128]u8,
+    disable: bool,
+    plugin: *IServerPluginCallbacks,
+    plugin_interface_version: c_int,
+    plugin_module: *anyopaque,
+};
+
+pub const CServerPlugin = extern struct {
+    _vt: [*]*const anyopaque,
+    plugins: CUtlVector(*CPlugin),
+    plugin_helper_check: *anyopaque,
+};
+
 pub const MAX_EDICTS = 1 << 11;
 
 pub const IServerUnknown = extern struct {

@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const sdk = @import("sdk");
 const Hook = @import("zhook").Hook;
 
 const core = @import("core.zig");
@@ -11,13 +12,11 @@ const vgui = modules.vgui;
 
 const event = @import("event.zig");
 
+const IServerPluginCallbacks = sdk.IServerPluginCallbacks;
+
 pub const std_options: std.Options = .{
     .log_level = .debug,
     .logFn = @import("log.zig").log,
-};
-
-const IServerPluginCallbacks = extern struct {
-    _vt: *align(@alignOf(*anyopaque)) const anyopaque,
 };
 
 var plugin_loaded: bool = false;
@@ -207,7 +206,7 @@ const vt_IServerPluginCallbacks = [_]*const anyopaque{
     &onQueryCvarValueFinished,
 };
 
-const plugin: IServerPluginCallbacks = .{
+pub const plugin: IServerPluginCallbacks = .{
     ._vt = @ptrCast(&vt_IServerPluginCallbacks),
 };
 

@@ -6,6 +6,9 @@ const Module = @import("Module.zig");
 
 const core = @import("../core.zig");
 const event = @import("../event.zig");
+const tier1 = @import("tier1.zig");
+
+const main = @import("../main.zig");
 
 const sdk = @import("sdk");
 const Edict = sdk.Edict;
@@ -22,6 +25,45 @@ pub var module: Module = .{
     .init = init,
     .deinit = deinit,
 };
+
+var vkrk_unload = tier1.ConCommand.init(.{
+    .name = "vkrk_unload",
+    .flags = .{
+        .dont_record = true,
+    },
+    .help_string = "Unloads vkuroko.",
+    .command_callback = vkrk_unload_Fn,
+});
+
+fn getPluginIndex() ?u32 {
+    const plugin_addr = @intFromPtr(&main.plugin);
+    var i: u32 = 0;
+    while (i < plugin_helper.plugins.size) : (i += 1) {
+        if (@intFromPtr(plugin_helper.plugins.element[i].plugin) == plugin_addr) {
+            return i;
+        }
+    }
+    return null;
+}
+
+fn vkrk_unload_Fn(args: *const tier1.CCommand) callconv(.C) void {
+    _ = args;
+
+    if (getPluginIndex()) |index| {
+        var buf: [32]u8 = undefined;
+        if (std.fmt.bufPrintZ(&buf, "plugin_unload {d}", .{index})) |cmd| {
+            core.log.info("Unloading plugin...", .{});
+            client.clientCmd(cmd);
+            return;
+        } else |_| {
+            core.log.warn("Failed to format command", .{});
+        }
+    } else {
+        core.log.warn("Could not determine plugin index", .{});
+    }
+
+    core.log.warn("Failed to unload plugin.", .{});
+}
 
 pub var sdk_version: u32 = 0;
 
@@ -117,6 +159,8 @@ pub var client: *IVEngineClient = undefined;
 pub var trace_server: *IEngineTrace = undefined;
 pub var trace_client: *IEngineTrace = undefined;
 
+pub var plugin_helper: *sdk.CServerPlugin = undefined;
+
 fn init() bool {
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
         core.log.err("Failed to get IVEngineServer interface", .{});
@@ -144,6 +188,13 @@ fn init() bool {
         core.log.err("Failed to get EngineTraceClient interface", .{});
         return false;
     });
+
+    plugin_helper = @ptrCast(interfaces.engineFactory("ISERVERPLUGINHELPERS001", null) orelse {
+        core.log.err("Failed to get IServerPluginHelpers interface", .{});
+        return false;
+    });
+
+    vkrk_unload.register();
 
     return true;
 }
