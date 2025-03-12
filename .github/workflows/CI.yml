@@ -1,7 +1,11 @@
 name: CI
 
 on:
-  push
+  push:
+    paths-ignore:
+      - '.gitignore'
+      - 'LICENSE'
+      - 'README.md'
 
 jobs:
   build:
