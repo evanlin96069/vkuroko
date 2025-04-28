@@ -5,8 +5,8 @@
 #include <kuroko/vm.h>
 #include <kuroko/util.h>
 #include <kuroko/compiler.h>
+#include <kuroko/io.h>
 
-#include "libio.h"
 #include "private.h"
 #include "opcode_enum.h"
 

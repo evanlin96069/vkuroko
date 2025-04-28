@@ -32,7 +32,7 @@
  * @param func  Code object to disassemble.
  * @param name  Function name to display in disassembly output.
  */
-extern void krk_disassembleCodeObject(FILE * f, KrkCodeObject * func, const char * name);
+extern KRK_PUBLIC void krk_disassembleCodeObject(FILE * f, KrkCodeObject * func, const char * name);
 
 /**
  * @brief Print a disassembly of a single opcode instruction.
@@ -46,14 +46,14 @@ extern void krk_disassembleCodeObject(FILE * f, KrkCodeObject * func, const char
  * @param offset Byte offset of the instruction to disassemble.
  * @return The size of the instruction in bytes.
  */
-extern size_t krk_disassembleInstruction(FILE * f, KrkCodeObject * func, size_t offset);
+extern KRK_PUBLIC size_t krk_disassembleInstruction(FILE * f, KrkCodeObject * func, size_t offset);
 
 /**
  * @brief Called by the VM when a breakpoint is encountered.
  *
  * Internal method, should not generally be called.
  */
-extern int krk_debugBreakpointHandler(void);
+extern KRK_PUBLIC int krk_debugBreakpointHandler(void);
 
 /**
  * @brief Called by the VM on single step.
@@ -64,7 +64,7 @@ extern int krk_debugBreakpointHandler(void);
  *
  * Internal method, should not generally be called.
  */
-extern int krk_debuggerHook(KrkCallFrame * frame);
+extern KRK_PUBLIC int krk_debuggerHook(KrkCallFrame * frame);
 
 /**
  * @brief Function pointer for a debugger hook.
@@ -91,7 +91,7 @@ typedef int (*KrkDebugCallback)(KrkCallFrame *frame);
  *         already registered, in which case the new hook
  *         has not been registered.
  */
-extern int krk_debug_registerCallback(KrkDebugCallback hook);
+extern KRK_PUBLIC int krk_debug_registerCallback(KrkDebugCallback hook);
 
 /**
  * @brief Add a breakpoint to the given line of a file.
@@ -108,7 +108,7 @@ extern int krk_debug_registerCallback(KrkDebugCallback hook);
  * @param flags Allows configuring the disposition of the breakpoint.
  * @return A breakpoint identifier handle on success, or -1 on failure.
  */
-extern int krk_debug_addBreakpointFileLine(KrkString * filename, size_t line, int flags);
+extern KRK_PUBLIC int krk_debug_addBreakpointFileLine(KrkString * filename, size_t line, int flags);
 
 /**
  * @brief Add a breakpoint to the given code object.
@@ -126,7 +126,7 @@ extern int krk_debug_addBreakpointFileLine(KrkString * filename, size_t line, in
  * @param flags Allows configuring the disposition of the breakpoint.
  * @return A breakpoint identifier handle on success, or -1 on failure.
  */
-extern int krk_debug_addBreakpointCodeOffset(KrkCodeObject * codeObject, size_t offset, int flags);
+extern KRK_PUBLIC int krk_debug_addBreakpointCodeOffset(KrkCodeObject * codeObject, size_t offset, int flags);
 
 /**
  * @brief Remove a breakpoint from the breakpoint table.
@@ -138,7 +138,7 @@ extern int krk_debug_addBreakpointCodeOffset(KrkCodeObject * codeObject, size_t 
  * @param breakpointId The breakpoint to remove.
  * @return 0 on success, 1 if the breakpoint identifier is invalid.
  */
-extern int krk_debug_removeBreakpoint(int breakpointId);
+extern KRK_PUBLIC int krk_debug_removeBreakpoint(int breakpointId);
 
 /**
  * @brief Enable a breakpoint.
@@ -149,7 +149,7 @@ extern int krk_debug_removeBreakpoint(int breakpointId);
  * @param breakpointId The breakpoint to enable.
  * @return 0 on success, 1 if the breakpoint identifier is invalid.
  */
-extern int krk_debug_enableBreakpoint(int breakpointId);
+extern KRK_PUBLIC int krk_debug_enableBreakpoint(int breakpointId);
 
 /**
  * @brief Disable a breakpoint.
@@ -162,17 +162,17 @@ extern int krk_debug_enableBreakpoint(int breakpointId);
  * @param breakpointId The breakpoint to disable.
  * @return 0 on success, 1 if the breakpoint identifier is invalid.
  */
-extern int krk_debug_disableBreakpoint(int breakpointId);
+extern KRK_PUBLIC int krk_debug_disableBreakpoint(int breakpointId);
 
 /**
  * @brief Enable single stepping in the current thread.
  */
-extern void krk_debug_enableSingleStep(void);
+extern KRK_PUBLIC void krk_debug_enableSingleStep(void);
 
 /**
  * @brief Disable single stepping in the current thread.
  */
-extern void krk_debug_disableSingleStep(void);
+extern KRK_PUBLIC void krk_debug_disableSingleStep(void);
 
 /**
  * @brief Safely dump a traceback to stderr.
@@ -180,7 +180,7 @@ extern void krk_debug_disableSingleStep(void);
  * Wraps @ref krk_dumpTraceback() so it can be safely
  * called from a debugger.
  */
-extern void krk_debug_dumpTraceback(void);
+extern KRK_PUBLIC void krk_debug_dumpTraceback(void);
 
 /**
  * @brief Retreive information on a breakpoint.
@@ -195,7 +195,7 @@ extern void krk_debug_dumpTraceback(void);
  * @param enabledOut (Out) Whether the breakpoint is enabled or not.
  * @return 0 on success, -1 on out of range, -2 if the selected slot was removed.
  */
-extern int krk_debug_examineBreakpoint(int breakIndex, KrkCodeObject ** funcOut, size_t * offsetOut, int * flagsOut, int *enabledOut);
+extern KRK_PUBLIC int krk_debug_examineBreakpoint(int breakIndex, KrkCodeObject ** funcOut, size_t * offsetOut, int * flagsOut, int *enabledOut);
 
 /**
  * @brief Print the elements on the stack.
@@ -204,12 +204,12 @@ extern int krk_debug_examineBreakpoint(int breakIndex, KrkCodeObject ** funcOut,
  * highlighting @p frame as the activate call point and indicating
  * where its arguments start.
  */
-extern void krk_debug_dumpStack(FILE * f, KrkCallFrame * frame);
+extern KRK_PUBLIC void krk_debug_dumpStack(FILE * f, KrkCallFrame * frame);
 
 /**
  * @brief Initialize debugger state. Call exactly once per VM.
  */
-extern void krk_debug_init(void);
+extern KRK_PUBLIC void krk_debug_init(void);
 
 /**
  * @def KRK_BREAKPOINT_NORMAL
@@ -252,7 +252,7 @@ extern void krk_debug_init(void);
  * @param midEnd     Last column, 1-indexed, of carets, main token of expression.
  * @param end        Last column, 1-indexed, of tildes, right side of expression.
  */
-extern void krk_debug_addExpression(KrkCodeObject * codeobject, uint8_t start, uint8_t midStart, uint8_t midEnd, uint8_t end);
+extern KRK_PUBLIC void krk_debug_addExpression(KrkCodeObject * codeobject, uint8_t start, uint8_t midStart, uint8_t midEnd, uint8_t end);
 
 /**
  * @brief Extract expression mapping from chunk.
@@ -269,7 +269,7 @@ extern void krk_debug_addExpression(KrkCodeObject * codeobject, uint8_t start, u
  * @param instruction Offset of the last byte of an opcode, as is stored in a traceback entry.
  * @returns Non-zero if a mapping was found.
  */
-extern int krk_debug_expressionUnderline(const KrkCodeObject * codeobject, uint8_t * start, uint8_t * midStart, uint8_t * endStart, uint8_t * end, size_t instruction);
+extern KRK_PUBLIC int krk_debug_expressionUnderline(const KrkCodeObject * codeobject, uint8_t * start, uint8_t * midStart, uint8_t * endStart, uint8_t * end, size_t instruction);
 
 /**
  * @brief Print a value without calling the VM.
@@ -287,6 +287,6 @@ extern int krk_debug_expressionUnderline(const KrkCodeObject * codeobject, uint8
  * @param f     Stream to write to.
  * @param value Value to display.
  */
-extern void krk_printValueSafe(FILE * f, KrkValue value);
+extern KRK_PUBLIC void krk_printValueSafe(FILE * f, KrkValue value);
 
 #endif

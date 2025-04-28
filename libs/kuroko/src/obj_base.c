@@ -3,8 +3,7 @@
 #include <kuroko/value.h>
 #include <kuroko/memory.h>
 #include <kuroko/util.h>
-
-#include "libio.h"
+#include <kuroko/io.h>
 
 #define CURRENT_NAME  self
 

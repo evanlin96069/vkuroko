@@ -7,8 +7,8 @@
 #include <kuroko/value.h>
 #include <kuroko/memory.h>
 #include <kuroko/util.h>
+#include <kuroko/io.h>
 
-#include "libio.h"
 #include "private.h"
 #include "opcode_enum.h"
 

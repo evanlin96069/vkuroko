@@ -24,7 +24,7 @@
  * @param new New size of the object.
  * @return New pointer for heap object.
  */
-extern void * krk_reallocate(void * ptr, size_t old, size_t new);
+extern KRK_PUBLIC void * krk_reallocate(void * ptr, size_t old, size_t new);
 
 /**
  * @brief Release all objects.
@@ -32,7 +32,7 @@ extern void * krk_reallocate(void * ptr, size_t old, size_t new);
  * Generally called automatically by krk_freeVM(); releases all of
  * the GC-tracked heap objects.
  */
-extern void krk_freeObjects(void);
+extern KRK_PUBLIC void krk_freeObjects(void);
 
 /**
  * @brief Run a cycle of the garbage collector.
@@ -43,7 +43,7 @@ extern void krk_freeObjects(void);
  *
  * @return The number of bytes released by this collection cycle.
  */
-extern size_t krk_collectGarbage(void);
+extern KRK_PUBLIC size_t krk_collectGarbage(void);
 
 /**
  * @brief During a GC scan cycle, mark a value as used.
@@ -54,7 +54,7 @@ extern size_t krk_collectGarbage(void);
  *
  * @param value The value to mark.
  */
-extern void krk_markValue(KrkValue value);
+extern KRK_PUBLIC void krk_markValue(KrkValue value);
 
 /**
  * @brief During a GC scan cycle, mark an object as used.
@@ -63,7 +63,7 @@ extern void krk_markValue(KrkValue value);
  *
  * @param object The object to mark.
  */
-extern void krk_markObject(KrkObj * object);
+extern KRK_PUBLIC void krk_markObject(KrkObj * object);
 
 /**
  * @brief During a GC scan cycle, mark the contents of a table as used.
@@ -73,7 +73,7 @@ extern void krk_markObject(KrkObj * object);
  *
  * @param table The table to mark.
  */
-extern void krk_markTable(KrkTable * table);
+extern KRK_PUBLIC void krk_markTable(KrkTable * table);
 
 /**
  * @brief Assume ownership of @p size bytes at @p ptr
@@ -86,4 +86,4 @@ extern void krk_markTable(KrkTable * table);
  * @param ptr Pointer to take ownership of
  * @param size Size of data at @p ptr
  */
-extern void krk_gcTakeBytes(const void * ptr, size_t size);
+extern KRK_PUBLIC void krk_gcTakeBytes(const void * ptr, size_t size);

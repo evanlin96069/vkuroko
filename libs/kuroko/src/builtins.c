@@ -4,8 +4,8 @@
 #include <kuroko/memory.h>
 #include <kuroko/util.h>
 #include <kuroko/debug.h>
+#include <kuroko/io.h>
 
-#include "libio.h"
 #include "private.h"
 
 FUNC_SIG(list,__init__);

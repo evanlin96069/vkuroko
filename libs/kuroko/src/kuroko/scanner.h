@@ -150,12 +150,12 @@ typedef struct {
 /**
  * @brief Initialize the compiler to scan tokens from 'src'.
  */
-extern KrkScanner krk_initScanner(const char * src);
+extern KRK_PUBLIC KrkScanner krk_initScanner(const char * src);
 
 /**
  * @brief Read the next token from the scanner.
  */
-extern KrkToken krk_scanToken(KrkScanner*);
+extern KRK_PUBLIC KrkToken krk_scanToken(KrkScanner*);
 
 /**
  * @brief Push a token back to the scanner to be reprocessed.
@@ -164,7 +164,7 @@ extern KrkToken krk_scanToken(KrkScanner*);
  * Used to implement small backtracking operations at the
  * end of block constructs like 'if' and 'try'.
  */
-extern void krk_ungetToken(KrkScanner*, KrkToken token);
+extern KRK_PUBLIC void krk_ungetToken(KrkScanner*, KrkToken token);
 
 /**
  * @brief Rewind the scanner to a previous state.
@@ -173,7 +173,7 @@ extern void krk_ungetToken(KrkScanner*, KrkToken token);
  * the compiler to implement comprehensions, which would otherwise
  * not be possible in a single-pass compiler.
  */
-extern void krk_rewindScanner(KrkScanner*, KrkScanner to);
+extern KRK_PUBLIC void krk_rewindScanner(KrkScanner*, KrkScanner to);
 
 /**
  * @brief Retreive a copy of the current scanner state.
@@ -181,4 +181,4 @@ extern void krk_rewindScanner(KrkScanner*, KrkScanner to);
  * Used with krk_rewindScanner() to implement rescanning
  * for comprehensions.
  */
-extern KrkScanner krk_tellScanner(KrkScanner*);
+extern KRK_PUBLIC KrkScanner krk_tellScanner(KrkScanner*);

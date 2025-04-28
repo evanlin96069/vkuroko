@@ -69,7 +69,7 @@ pub fn link(
             "threads.c",
             "value.c",
             "vm.c",
-            "libio.c",
+            "io.c",
             "libtime.c",
         },
         .flags = &.{

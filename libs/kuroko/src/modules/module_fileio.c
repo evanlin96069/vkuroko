@@ -13,8 +13,7 @@
 #include <kuroko/object.h>
 #include <kuroko/memory.h>
 #include <kuroko/util.h>
-
-#include "libio.h"
+#include <kuroko/io.h>
 
 static KrkClass * fileio_File;
 static KrkClass * fileio_BinaryFile;

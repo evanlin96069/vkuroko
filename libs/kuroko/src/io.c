@@ -1,4 +1,4 @@
-#include "libio.h"
+#include <kuroko/io.h>
 #include <kuroko/vm.h>
 
 #include <stdarg.h>

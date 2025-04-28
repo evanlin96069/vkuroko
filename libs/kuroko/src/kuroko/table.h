@@ -43,7 +43,7 @@ typedef struct {
  *
  * @param table Hash table to initialize.
  */
-extern void krk_initTable(KrkTable * table);
+extern KRK_PUBLIC void krk_initTable(KrkTable * table);
 
 /**
  * @brief Release resources associated with a hash table.
@@ -53,7 +53,7 @@ extern void krk_initTable(KrkTable * table);
  *
  * @param table Hash table to release.
  */
-extern void krk_freeTable(KrkTable * table);
+extern KRK_PUBLIC void krk_freeTable(KrkTable * table);
 
 /**
  * @brief Add all key-value pairs from 'from' into 'to'.
@@ -66,7 +66,7 @@ extern void krk_freeTable(KrkTable * table);
  * @param from Source table.
  * @param to   Destination table.
  */
-extern void krk_tableAddAll(KrkTable * from, KrkTable * to);
+extern KRK_PUBLIC void krk_tableAddAll(KrkTable * from, KrkTable * to);
 
 /**
  * @brief Find a character sequence in the string interning table.
@@ -82,7 +82,7 @@ extern void krk_tableAddAll(KrkTable * from, KrkTable * to);
  * @param hash    Precalculated hash value for the string.
  * @return If the string was found, the string object representation, else NULL.
  */
-extern struct KrkString * krk_tableFindString(KrkTable * table, const char * chars, size_t length, uint32_t hash);
+extern KRK_PUBLIC struct KrkString * krk_tableFindString(KrkTable * table, const char * chars, size_t length, uint32_t hash);
 
 /**
  * @brief Assign a value to a key in a table.
@@ -97,7 +97,7 @@ extern struct KrkString * krk_tableFindString(KrkTable * table, const char * cha
  * @param value Value to assign to the key.
  * @return 0 if the key was already present and has been overwritten, 1 if the key is new to the table.
  */
-extern int krk_tableSet(KrkTable * table, KrkValue key, KrkValue value);
+extern KRK_PUBLIC int krk_tableSet(KrkTable * table, KrkValue key, KrkValue value);
 
 /**
  * @brief Obtain the value associated with a key in a table.
@@ -112,7 +112,7 @@ extern int krk_tableSet(KrkTable * table, KrkValue key, KrkValue value);
  * @param value Output pointer to place resulting value in.
  * @return 0 if the key was not found, 1 if it was.
  */
-extern int krk_tableGet(KrkTable * table, KrkValue key, KrkValue * value);
+extern KRK_PUBLIC int krk_tableGet(KrkTable * table, KrkValue key, KrkValue * value);
 
 /**
  * @brief Obtain the value associated with a string key in a table.
@@ -127,7 +127,7 @@ extern int krk_tableGet(KrkTable * table, KrkValue key, KrkValue * value);
  * @param value Output pointer to place resulting value in.
  * @return 0 if the key was not found, 1 if it was.
  */
-extern int krk_tableGet_fast(KrkTable * table, struct KrkString * str, KrkValue * value);
+extern KRK_PUBLIC int krk_tableGet_fast(KrkTable * table, struct KrkString * str, KrkValue * value);
 
 /**
  * @brief Remove a key from a hash table.
@@ -140,7 +140,7 @@ extern int krk_tableGet_fast(KrkTable * table, struct KrkString * str, KrkValue 
  * @param key   Key to delete.
  * @return 1 if the value was found and deleted, 0 if it was not present.
  */
-extern int krk_tableDelete(KrkTable * table, KrkValue key);
+extern KRK_PUBLIC int krk_tableDelete(KrkTable * table, KrkValue key);
 
 /**
  * @brief Remove a key from a hash table, with identity lookup.
@@ -153,7 +153,7 @@ extern int krk_tableDelete(KrkTable * table, KrkValue key);
  * @param key   Key to delete.
  * @return 1 if the value was found and deleted, 0 if it was not present.
  */
-extern int krk_tableDeleteExact(KrkTable * table, KrkValue key);
+extern KRK_PUBLIC int krk_tableDeleteExact(KrkTable * table, KrkValue key);
 
 /**
  * @brief Calculate the hash for a value.
@@ -165,7 +165,7 @@ extern int krk_tableDeleteExact(KrkTable * table, KrkValue key);
  * @param *hashOut An unsigned 32-bit hash value.
  * @return Status code 0 for success, 1 for unhashable type.
  */
-extern int krk_hashValue(KrkValue value, uint32_t *hashOut);
+extern KRK_PUBLIC int krk_hashValue(KrkValue value, uint32_t *hashOut);
 
 /**
  * @brief Preset the size of a table.
@@ -176,7 +176,7 @@ extern int krk_hashValue(KrkValue value, uint32_t *hashOut);
  * @param table Table to resize.
  * @param capacity Target capacity.
  */
-extern void krk_tableAdjustCapacity(KrkTable * table, size_t capacity);
+extern KRK_PUBLIC void krk_tableAdjustCapacity(KrkTable * table, size_t capacity);
 
 /**
  * @brief Update the value of a table entry only if it is found.
@@ -192,4 +192,4 @@ extern void krk_tableAdjustCapacity(KrkTable * table, size_t capacity);
  * @param value Value to assign to the key.
  * @return 0 if the key was not present, 1 if it was found and updated.
  */
-extern int krk_tableSetIfExists(KrkTable * table, KrkValue key, KrkValue value);
+extern KRK_PUBLIC int krk_tableSetIfExists(KrkTable * table, KrkValue key, KrkValue value);

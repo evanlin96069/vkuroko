@@ -267,10 +267,10 @@ KrkValue krk_discardStringBuilder(struct StringBuilder * sb);
 #define IS_slice(o) krk_isInstanceOf(o,vm.baseClasses->sliceClass)
 #define AS_slice(o) ((struct KrkSlice*)AS_INSTANCE(o))
 
-extern KrkValue krk_dict_nth_key_fast(size_t capacity, KrkTableEntry * entries, size_t index);
-extern KrkValue FUNC_NAME(str,__getitem__)(int,const KrkValue*,int);
-extern KrkValue FUNC_NAME(str,split)(int,const KrkValue*,int);
-extern KrkValue FUNC_NAME(str,format)(int,const KrkValue*,int);
+extern KRK_PUBLIC KrkValue krk_dict_nth_key_fast(size_t capacity, KrkTableEntry * entries, size_t index);
+extern KRK_PUBLIC KrkValue FUNC_NAME(str,__getitem__)(int,const KrkValue*,int);
+extern KRK_PUBLIC KrkValue FUNC_NAME(str,split)(int,const KrkValue*,int);
+extern KRK_PUBLIC KrkValue FUNC_NAME(str,format)(int,const KrkValue*,int);
 #define krk_string_get FUNC_NAME(str,__getitem__)
 #define krk_string_split FUNC_NAME(str,split)
 #define krk_string_format FUNC_NAME(str,format)
@@ -311,7 +311,7 @@ static inline void _setDoc_native(KrkNative * thing, const char * text, size_t s
 
 #define BUILTIN_FUNCTION(name, func, docStr) KRK_DOC(krk_defineNative(&vm.builtins->fields, name, func), docStr)
 
-extern int krk_extractSlicer(const char * _method_name, KrkValue slicerVal, krk_integer_type count, krk_integer_type *start, krk_integer_type *end, krk_integer_type *step);
+extern KRK_PUBLIC int krk_extractSlicer(const char * _method_name, KrkValue slicerVal, krk_integer_type count, krk_integer_type *start, krk_integer_type *end, krk_integer_type *step);
 #define KRK_SLICER(arg,count) \
 	krk_integer_type start; \
 	krk_integer_type end; \
@@ -329,19 +329,19 @@ extern int krk_extractSlicer(const char * _method_name, KrkValue slicerVal, krk_
  * If @p iterable is not iterable, an exception is set and 1 is returned.
  * If @p callback returns non-zero, unpacking stops and 1 is returned, with no additional exception.
  */
-extern int krk_unpackIterable(KrkValue iterable, void * context, int callback(void *, const KrkValue *, size_t));
+extern KRK_PUBLIC int krk_unpackIterable(KrkValue iterable, void * context, int callback(void *, const KrkValue *, size_t));
 
 
 #define KRK_BASE_CLASS(cls) (vm.baseClasses->cls ## Class)
 #define KRK_EXC(exc) (vm.exceptions->exc)
 
 
-extern int krk_parseVArgs(
+extern KRK_PUBLIC int krk_parseVArgs(
 		const char * _method_name,
 		int argc, const KrkValue argv[], int hasKw,
 		const char * fmt, const char ** names, va_list args);
 
-extern int krk_parseArgs_impl(
+extern KRK_PUBLIC int krk_parseArgs_impl(
 		const char * _method_name,
 		int argc, const KrkValue argv[], int hasKw,
 		const char * format, const char ** names, ...);
@@ -360,11 +360,11 @@ extern int krk_parseArgs_impl(
 #define krk_parseArgs(f,n,...) krk_parseArgs_impl(_method_name,argc,argv,hasKw,f,n,__VA_ARGS__)
 
 
-extern int krk_pushStringBuilderFormatV(struct StringBuilder * sb, const char * fmt, va_list args);
-extern int krk_pushStringBuilderFormat(struct StringBuilder * sb, const char * fmt, ...);
-extern KrkValue krk_stringFromFormat(const char * fmt, ...);
-extern int krk_long_to_int(KrkValue val, char size, void * out);
-extern int krk_isSubClass(const KrkClass * cls, const KrkClass * base);
+extern KRK_PUBLIC int krk_pushStringBuilderFormatV(struct StringBuilder * sb, const char * fmt, va_list args);
+extern KRK_PUBLIC int krk_pushStringBuilderFormat(struct StringBuilder * sb, const char * fmt, ...);
+extern KRK_PUBLIC KrkValue krk_stringFromFormat(const char * fmt, ...);
+extern KRK_PUBLIC int krk_long_to_int(KrkValue val, char size, void * out);
+extern KRK_PUBLIC int krk_isSubClass(const KrkClass * cls, const KrkClass * base);
 
 #define KRK_Module_internal_name(name) \
 	_krk_module_onload_ ## name
@@ -372,7 +372,7 @@ extern int krk_isSubClass(const KrkClass * cls, const KrkClass * base);
 	static inline void KRK_Module_internal_name(name) (KrkInstance * module, KrkString * runAs)
 #define KRK_Module(name) \
 	KRK_Module_internal_sig(name); \
-	KrkValue krk_module_onload_ ## name (KrkString * runAs) { \
+	KrkValue KRK_EXPORT_MODULE krk_module_onload_ ## name (KrkString * runAs) { \
 		KrkInstance * module = krk_newInstance(KRK_BASE_CLASS(module)); \
 		krk_push(OBJECT_VAL(module)); \
 		krk_attachNamedObject(&module->fields, "__name__", (KrkObj*)runAs); \

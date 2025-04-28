@@ -88,7 +88,7 @@ typedef struct {
  *
  * @param array Value array to initialize.
  */
-extern void krk_initValueArray(KrkValueArray * array);
+extern KRK_PUBLIC void krk_initValueArray(KrkValueArray * array);
 
 /**
  * @brief Add a value to a value array.
@@ -100,7 +100,7 @@ extern void krk_initValueArray(KrkValueArray * array);
  * @param array Array to append to.
  * @param value Value to append to array.
  */
-extern void krk_writeValueArray(KrkValueArray * array, KrkValue value);
+extern KRK_PUBLIC void krk_writeValueArray(KrkValueArray * array, KrkValue value);
 
 /**
  * @brief Release relesources used by a value array.
@@ -113,7 +113,7 @@ extern void krk_writeValueArray(KrkValueArray * array, KrkValue value);
  *
  * @param array Array to release.
  */
-extern void krk_freeValueArray(KrkValueArray * array);
+extern KRK_PUBLIC void krk_freeValueArray(KrkValueArray * array);
 
 /**
  * @brief Compare two values for equality.
@@ -125,7 +125,7 @@ extern void krk_freeValueArray(KrkValueArray * array);
  *
  * @return 1 if values are equivalent, 0 otherwise.
  */
-extern int krk_valuesEqual(KrkValue a, KrkValue b);
+extern KRK_PUBLIC int krk_valuesEqual(KrkValue a, KrkValue b);
 
 /**
  * @brief Compare two values by identity.
@@ -148,10 +148,10 @@ static inline int krk_valuesSame(KrkValue a, KrkValue b) { return _krk_valuesSam
  *
  * @return 1 if values represent the same object or value, 0 otherwise.
  */
-extern int krk_valuesSameOrEqual(KrkValue a, KrkValue b);
+extern KRK_PUBLIC int krk_valuesSameOrEqual(KrkValue a, KrkValue b);
 
-extern KrkValue krk_parse_int(const char * start, size_t width, unsigned int base);
-extern KrkValue krk_parse_float(const char* start, size_t width);
+extern KRK_PUBLIC KrkValue krk_parse_int(const char * start, size_t width, unsigned int base);
+extern KRK_PUBLIC KrkValue krk_parse_float(const char* start, size_t width);
 
 #ifndef KRK_NO_NAN_BOXING
 

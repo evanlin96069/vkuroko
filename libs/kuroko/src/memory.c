@@ -5,8 +5,8 @@
 #include <kuroko/compiler.h>
 #include <kuroko/table.h>
 #include <kuroko/util.h>
+#include <kuroko/io.h>
 
-#include "libio.h"
 #include "libtime.h"
 #include "private.h"
 

@@ -32,6 +32,19 @@ typedef int64_t krk_integer_type;
 # endif
 #endif
 
+#if !defined(KRK_STATIC_ONLY) && defined(_WIN32)
+# ifdef KRK_BUILDING_MODULE
+#  define KRK_PUBLIC __declspec(dllimport)
+# define KRK_EXPORT_MODULE __declspec(dllexport)
+# else
+#  define KRK_PUBLIC __declspec(dllexport)
+# define KRK_EXPORT_MODULE
+# endif
+#else
+# define KRK_IMPORT
+# define KRK_EXPORT_MODULE
+#endif
+
 #if defined(_MSC_VER) && !defined(__clang__)
 #define KRK_NO_DOCUMENTATION 1
 #define KRK_NO_GC_TRACING 1

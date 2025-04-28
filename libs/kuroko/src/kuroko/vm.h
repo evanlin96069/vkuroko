@@ -230,25 +230,25 @@ typedef struct KrkVM {
  * See @c KrkThreadState for more information.
  */
 #if !defined(KRK_DISABLE_THREADS) && ((defined(__APPLE__)) && defined(__aarch64__))
-extern void krk_forceThreadData(void);
+extern KRK_PUBLIC void krk_forceThreadData(void);
 #define krk_currentThread (*_macos_currentThread())
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"
 __attribute__((always_inline))
 inline KrkThreadState * _macos_currentThread(void) {
-	extern const uint64_t tls_desc[] asm("_krk_currentThread");
+	extern KRK_PUBLIC const uint64_t tls_desc[] asm("_krk_currentThread");
 	const uintptr_t * threadptr; asm ("mrs %0, TPIDRRO_EL0" : "=r"(threadptr));
 	return (KrkThreadState*)(threadptr[tls_desc[1]] + tls_desc[2]);
 }
 #elif !defined(KRK_DISABLE_THREADS) && ((defined(_WIN32) && !defined(KRKINLIB)) || defined(KRK_MEDIOCRE_TLS))
 #define krk_currentThread (*krk_getCurrentThread())
 #else
-extern krk_threadLocal KrkThreadState krk_currentThread;
+extern KRK_PUBLIC krk_threadLocal KrkThreadState krk_currentThread;
 #endif
 
 /**
  * @brief Singleton instance of the shared VM state.
  */
-extern KrkVM krk_vm;
+extern KRK_PUBLIC KrkVM krk_vm;
 
 /**
  * @def vm
@@ -268,7 +268,7 @@ extern KrkVM krk_vm;
  *
  * @param flags Combination of global VM flags and initial thread flags.
  */
-extern void krk_initVM(int flags);
+extern KRK_PUBLIC void krk_initVM(int flags);
 
 /**
  * @brief Release resources from the VM.
@@ -280,7 +280,7 @@ extern void krk_initVM(int flags);
  * heap memory, FILE pointers or descriptors, or various other things which were
  * initialized by C extension modules.
  */
-extern void krk_freeVM(void);
+extern KRK_PUBLIC void krk_freeVM(void);
 
 /**
  * @brief Reset the current thread's stack state to the top level.
@@ -290,7 +290,7 @@ extern void krk_freeVM(void);
  * during normal execution by C extensions. Values on the stack may be lost
  * to garbage collection after a call to @c krk_resetStack .
  */
-extern void krk_resetStack(void);
+extern KRK_PUBLIC void krk_resetStack(void);
 
 /**
  * @brief Compile and execute a source code input.
@@ -311,7 +311,7 @@ extern void krk_resetStack(void);
  *         indicate @c KRK_THREAD_HAS_EXCEPTION and @c krk_currentThread.currentException
  *         should contain the raised exception value.
  */
-extern KrkValue krk_interpret(const char * src, const char * fromFile);
+extern KRK_PUBLIC KrkValue krk_interpret(const char * src, const char * fromFile);
 
 /**
  * @brief Load and run a source file and return when execution completes.
@@ -325,7 +325,7 @@ extern KrkValue krk_interpret(const char * src, const char * fromFile);
  * @return As with @c krk_interpret, an object representing the newly created module,
  *         or the final return value of the VM execution.
  */
-extern KrkValue krk_runfile(const char * fileName, const char * fromFile);
+extern KRK_PUBLIC KrkValue krk_runfile(const char * fileName, const char * fromFile);
 
 /**
  * @brief Push a stack value.
@@ -335,7 +335,7 @@ extern KrkValue krk_runfile(const char * fileName, const char * fromFile);
  *
  * @param value Value to push.
  */
-extern void krk_push(KrkValue value);
+extern KRK_PUBLIC void krk_push(KrkValue value);
 
 /**
  * @brief Pop the top of the stack.
@@ -347,7 +347,7 @@ extern void krk_push(KrkValue value);
  *
  * @return The value previously at the top of the stack.
  */
-extern KrkValue krk_pop(void);
+extern KRK_PUBLIC KrkValue krk_pop(void);
 
 /**
  * @brief Peek down from the top of the stack.
@@ -357,7 +357,7 @@ extern KrkValue krk_pop(void);
  * @param distance How far down from the top of the stack to peek (0 = the top)
  * @return The value from the stack.
  */
-extern KrkValue krk_peek(int distance);
+extern KRK_PUBLIC KrkValue krk_peek(int distance);
 
 /**
  * @brief Swap the top of the stack of the value @p distance slots down.
@@ -367,7 +367,7 @@ extern KrkValue krk_peek(int distance);
  *
  * @param distance How from down from the top of the stack to swap (0 = the top)
  */
-extern void krk_swap(int distance);
+extern KRK_PUBLIC void krk_swap(int distance);
 
 /**
  * @brief Get the name of the type of a value.
@@ -380,7 +380,7 @@ extern void krk_swap(int distance);
  * @param value Value to examine
  * @return Nul-terminated C string of the type of @p value
  */
-extern const char * krk_typeName(KrkValue value);
+extern KRK_PUBLIC const char * krk_typeName(KrkValue value);
 
 /**
  * @brief Attach a native C function to an attribute table.
@@ -397,7 +397,7 @@ extern const char * krk_typeName(KrkValue value);
  * @param function Native function pointer to attach
  * @return A pointer to the object representing the attached function.
  */
-extern KrkNative * krk_defineNative(KrkTable * table, const char * name, NativeFn function);
+extern KRK_PUBLIC KrkNative * krk_defineNative(KrkTable * table, const char * name, NativeFn function);
 
 /**
  * @brief Attach a native dynamic property to an attribute table.
@@ -412,7 +412,7 @@ extern KrkNative * krk_defineNative(KrkTable * table, const char * name, NativeF
  * @param func     Native function pointer to attach
  * @return A pointer to the property object created.
  */
-extern KrkNative * krk_defineNativeProperty(KrkTable * table, const char * name, NativeFn func);
+extern KRK_PUBLIC KrkNative * krk_defineNativeProperty(KrkTable * table, const char * name, NativeFn func);
 
 /**
  * @brief Attach a value to an attribute table.
@@ -436,7 +436,7 @@ extern KrkNative * krk_defineNativeProperty(KrkTable * table, const char * name,
  * @param name  Nil-terminated C string with the name to assign
  * @param obj   Value to attach.
  */
-extern void krk_attachNamedValue(KrkTable * table, const char name[], KrkValue obj);
+extern KRK_PUBLIC void krk_attachNamedValue(KrkTable * table, const char name[], KrkValue obj);
 
 /**
  * @brief Attach an object to an attribute table.
@@ -462,7 +462,7 @@ extern void krk_attachNamedValue(KrkTable * table, const char name[], KrkValue o
  * @param name  Nil-terminated C string with the name to assign
  * @param obj   Object to attach.
  */
-extern void krk_attachNamedObject(KrkTable * table, const char name[], KrkObj * obj);
+extern KRK_PUBLIC void krk_attachNamedObject(KrkTable * table, const char name[], KrkObj * obj);
 
 /**
  * @brief Produce and raise an exception with a formatted message.
@@ -493,7 +493,7 @@ extern void krk_attachNamedObject(KrkTable * table, const char name[], KrkObj * 
  * @param fmt  Format string.
  * @return As a convenience to C extension authors, returns @c None
  */
-extern KrkValue krk_runtimeError(KrkClass * type, const char * fmt, ...);
+extern KRK_PUBLIC KrkValue krk_runtimeError(KrkClass * type, const char * fmt, ...);
 
 /**
  * @brief Raise an exception value.
@@ -511,7 +511,7 @@ extern KrkValue krk_runtimeError(KrkClass * type, const char * fmt, ...);
  * @param base Exception object or class to raise.
  * @param cause Exception cause object or class to attach.
  */
-extern void krk_raiseException(KrkValue base, KrkValue cause);
+extern KRK_PUBLIC void krk_raiseException(KrkValue base, KrkValue cause);
 
 /**
  * @brief Attach an inner exception to the current exception object.
@@ -522,7 +522,7 @@ extern void krk_raiseException(KrkValue base, KrkValue cause);
  *
  * @param innerException \__context__ to set.
  */
-extern void krk_attachInnerException(KrkValue innerException);
+extern KRK_PUBLIC void krk_attachInnerException(KrkValue innerException);
 
 /**
  * @brief Get a pointer to the current thread state.
@@ -533,7 +533,7 @@ extern void krk_attachInnerException(KrkValue innerException);
  *
  * @return Pointer to current thread's thread state.
  */
-extern KrkThreadState * krk_getCurrentThread(void);
+extern KRK_PUBLIC KrkThreadState * krk_getCurrentThread(void);
 
 /**
  * @brief Continue VM execution until the next exit trigger.
@@ -548,7 +548,7 @@ extern KrkThreadState * krk_getCurrentThread(void);
  *         returned by the inner function before the VM returned
  *         to the exit frame.
  */
-extern KrkValue  krk_runNext(void);
+extern KRK_PUBLIC KrkValue  krk_runNext(void);
 
 /**
  * @brief Get the class representing a value.
@@ -561,7 +561,7 @@ extern KrkValue  krk_runNext(void);
  * @param value Reference value to examine.
  * @return A pointer to the value's type's class object.
  */
-extern KrkClass * krk_getType(KrkValue value);
+extern KRK_PUBLIC KrkClass * krk_getType(KrkValue value);
 
 /**
  * @brief Determine if a class is an instance or subclass of a given type.
@@ -580,7 +580,7 @@ extern KrkClass * krk_getType(KrkValue value);
  * @param type Class object to test for membership of.
  * @return 1 if @p obj is an instance of @p type or of a subclass of @p type
  */
-extern int krk_isInstanceOf(KrkValue obj, const KrkClass * type);
+extern KRK_PUBLIC int krk_isInstanceOf(KrkValue obj, const KrkClass * type);
 
 /**
  * @brief Perform method binding on the stack.
@@ -598,7 +598,7 @@ extern int krk_isInstanceOf(KrkValue obj, const KrkClass * type);
  * @param name   String object with the name of the method to resolve.
  * @return 1 if the method has been bound, 0 if binding failed.
  */
-extern int krk_bindMethod(KrkClass * _class, KrkString * name);
+extern KRK_PUBLIC int krk_bindMethod(KrkClass * _class, KrkString * name);
 
 /**
  * @brief Bind a method with super() semantics
@@ -614,7 +614,7 @@ extern int krk_bindMethod(KrkClass * _class, KrkString * name);
  * @param realClass The class to bind if a class method is found.
  * @return 1 if a member has been found, 0 if binding fails.
  */
-extern int krk_bindMethodSuper(KrkClass * baseClass, KrkString * name, KrkClass * realClass);
+extern KRK_PUBLIC int krk_bindMethodSuper(KrkClass * baseClass, KrkString * name, KrkClass * realClass);
 
 /**
  * @brief Call a callable value in the current stack context.
@@ -634,37 +634,37 @@ extern int krk_bindMethodSuper(KrkClass * baseClass, KrkString * name, KrkClass 
  *         2: The callable was a native function and result should be popped now.
  *         Else: The call failed. An exception may have already been set.
  */
-extern int krk_callValue(KrkValue callee, int argCount, int callableOnStack);
+extern KRK_PUBLIC int krk_callValue(KrkValue callee, int argCount, int callableOnStack);
 
 /**
  * @brief Create a list object.
  * @memberof KrkList
  */
-extern KrkValue krk_list_of(int argc, const KrkValue argv[], int hasKw);
+extern KRK_PUBLIC KrkValue krk_list_of(int argc, const KrkValue argv[], int hasKw);
 
 /**
  * @brief Create a dict object.
  * @memberof KrkDict
  */
-extern KrkValue krk_dict_of(int argc, const KrkValue argv[], int hasKw);
+extern KRK_PUBLIC KrkValue krk_dict_of(int argc, const KrkValue argv[], int hasKw);
 
 /**
  * @brief Create a tuple object.
  * @memberof KrkTuple
  */
-extern KrkValue krk_tuple_of(int argc, const KrkValue argv[], int hasKw);
+extern KRK_PUBLIC KrkValue krk_tuple_of(int argc, const KrkValue argv[], int hasKw);
 
 /**
  * @brief Create a set object.
  * @memberof Set
  */
-extern KrkValue krk_set_of(int argc, const KrkValue argv[], int hasKw);
+extern KRK_PUBLIC KrkValue krk_set_of(int argc, const KrkValue argv[], int hasKw);
 
 /**
  * @brief Create a slice object.
  * @memberof KrkSlice
  */
-extern KrkValue krk_slice_of(int argc, const KrkValue argv[], int hasKw);
+extern KRK_PUBLIC KrkValue krk_slice_of(int argc, const KrkValue argv[], int hasKw);
 
 /**
  * @brief Call a callable on the stack with @p argCount arguments.
@@ -678,7 +678,7 @@ extern KrkValue krk_slice_of(int argc, const KrkValue argv[], int hasKw);
  * @param argCount Arguments to collect from the stack.
  * @return The return value of the function.
  */
-extern KrkValue krk_callStack(int argCount);
+extern KRK_PUBLIC KrkValue krk_callStack(int argCount);
 
 /**
  * @brief Call a closure or native function with @p argCount arguments.
@@ -691,7 +691,7 @@ extern KrkValue krk_callStack(int argCount);
  * @param argCount Arguments to collect from the stack.
  * @return The return value of the function.
  */
-extern KrkValue krk_callDirect(KrkObj * callable, int argCount);
+extern KRK_PUBLIC KrkValue krk_callDirect(KrkObj * callable, int argCount);
 
 /**
  * @brief Convenience function for creating new types.
@@ -706,7 +706,7 @@ extern KrkValue krk_callDirect(KrkObj * callable, int argCount);
  * @param base    Pointer to class object to inherit from.
  * @return A pointer to the class object, equivalent to the value assigned to @p _class.
  */
-extern KrkClass * krk_makeClass(KrkInstance * module, KrkClass ** _class, const char * name, KrkClass * base);
+extern KRK_PUBLIC KrkClass * krk_makeClass(KrkInstance * module, KrkClass ** _class, const char * name, KrkClass * base);
 
 /**
  * @brief Finalize a class by collecting pointers to core methods.
@@ -718,7 +718,7 @@ extern KrkClass * krk_makeClass(KrkInstance * module, KrkClass ** _class, const 
  *
  * @param _class Class object to finalize.
  */
-extern void krk_finalizeClass(KrkClass * _class);
+extern KRK_PUBLIC void krk_finalizeClass(KrkClass * _class);
 
 /**
  * @brief If there is an active exception, print a traceback to @c stderr
@@ -731,7 +731,7 @@ extern void krk_finalizeClass(KrkClass * _class);
  * open source files to print faulting lines and may call into the VM if the
  * exception object has a managed implementation of @c \__str__.
  */
-extern void krk_dumpTraceback(void);
+extern KRK_PUBLIC void krk_dumpTraceback(void);
 
 /**
  * @brief Set up a new module object in the current thread.
@@ -743,14 +743,14 @@ extern void krk_dumpTraceback(void);
  * @param name Name of the module, which is assigned to @c \__name__
  * @return The instance object representing the module.
  */
-extern KrkInstance * krk_startModule(const char * name);
+extern KRK_PUBLIC KrkInstance * krk_startModule(const char * name);
 
 /**
  * @brief Obtain a list of properties for an object.
  *
  * This is the native function bound to @c object.__dir__
  */
-extern KrkValue krk_dirObject(int argc, const KrkValue argv[], int hasKw);
+extern KRK_PUBLIC KrkValue krk_dirObject(int argc, const KrkValue argv[], int hasKw);
 
 /**
  * @brief Load a module from a file with a specified name.
@@ -765,7 +765,7 @@ extern KrkValue krk_dirObject(int argc, const KrkValue argv[], int hasKw);
  * @param parent    Parent module object, if loaded from a package.
  * @return 1 if the module was loaded, 0 if an @ref ImportError occurred.
  */
-extern int krk_loadModule(KrkString * path, KrkValue * moduleOut, KrkString * runAs, KrkValue parent);
+extern KRK_PUBLIC int krk_loadModule(KrkString * path, KrkValue * moduleOut, KrkString * runAs, KrkValue parent);
 
 /**
  * @brief Load a module by a dotted name.
@@ -776,7 +776,7 @@ extern int krk_loadModule(KrkString * path, KrkValue * moduleOut, KrkString * ru
  * @param name String object of the dot-separated package path to import.
  * @return 1 if the module was loaded, 0 if an @ref ImportError occurred.
  */
-extern int krk_doRecursiveModuleLoad(KrkString * name);
+extern KRK_PUBLIC int krk_doRecursiveModuleLoad(KrkString * name);
 
 /**
  * @brief Load the dotted name @p name with the final element as @p runAs
@@ -790,7 +790,7 @@ extern int krk_doRecursiveModuleLoad(KrkString * name);
  * @param runAs Alternative name to attach to @c \__name__ for the module.
  * @return 1 on success, 0 on failure.
  */
-extern int krk_importModule(KrkString * name, KrkString * runAs);
+extern KRK_PUBLIC int krk_importModule(KrkString * name, KrkString * runAs);
 
 /**
  * @brief Determine the truth of a value.
@@ -803,7 +803,7 @@ extern int krk_importModule(KrkString * name, KrkString * runAs);
  * @param value Value to examine.
  * @return 1 if falsey, 0 if truthy
  */
-extern int krk_isFalsey(KrkValue value);
+extern KRK_PUBLIC int krk_isFalsey(KrkValue value);
 
 /**
  * @brief Obtain a property of an object by name.
@@ -821,12 +821,12 @@ extern int krk_isFalsey(KrkValue value);
  *         exception set in the current thread if the attribute was
  *         not found.
  */
-extern KrkValue krk_valueGetAttribute(KrkValue value, char * name);
+extern KRK_PUBLIC KrkValue krk_valueGetAttribute(KrkValue value, char * name);
 
 /**
  * @brief See @ref krk_valueGetAttribute
  */
-extern KrkValue krk_valueGetAttribute_default(KrkValue value, char * name, KrkValue defaultVal);
+extern KRK_PUBLIC KrkValue krk_valueGetAttribute_default(KrkValue value, char * name, KrkValue defaultVal);
 
 /**
  * @brief Set a property of an object by name.
@@ -845,7 +845,7 @@ extern KrkValue krk_valueGetAttribute_default(KrkValue value, char * name, KrkVa
  *         exception set in the current thread if the object can
  *         not have a property set.
  */
-extern KrkValue krk_valueSetAttribute(KrkValue owner, char * name, KrkValue to);
+extern KRK_PUBLIC KrkValue krk_valueSetAttribute(KrkValue owner, char * name, KrkValue to);
 
 /**
  * @brief Delete a property of an object by name.
@@ -860,7 +860,7 @@ extern KrkValue krk_valueSetAttribute(KrkValue owner, char * name, KrkValue to);
  * @param owner The owner of the property to delete.
  * @param name  C-string of the property name to delete.
  */
-extern KrkValue krk_valueDelAttribute(KrkValue owner, char * name);
+extern KRK_PUBLIC KrkValue krk_valueDelAttribute(KrkValue owner, char * name);
 
 /**
  * @brief Concatenate two strings.
@@ -868,42 +868,42 @@ extern KrkValue krk_valueDelAttribute(KrkValue owner, char * name);
  * This is a convenience function which calls @c str.__add__ on the top stack
  * values. Generally, this should be avoided - use @c StringBuilder instead.
  */
-extern void krk_addObjects(void);
+extern KRK_PUBLIC void krk_addObjects(void);
 
 /**
  * @brief Compare two values, returning @ref True if the left is less than the right.
  *
  * This is equivalent to the opcode instruction OP_LESS.
  */
-extern KrkValue krk_operator_lt(KrkValue,KrkValue);
+extern KRK_PUBLIC KrkValue krk_operator_lt(KrkValue,KrkValue);
 
 /**
  * @brief Compare to values, returning @ref True if the left is greater than the right.
  *
  * This is equivalent to the opcode instruction OP_GREATER.
  */
-extern KrkValue krk_operator_gt(KrkValue,KrkValue);
+extern KRK_PUBLIC KrkValue krk_operator_gt(KrkValue,KrkValue);
 
 /**
  * @brief Compare two values, returning @ref True if the left is less than or equal to the right.
  *
  * This is equivalent to the opcode instruction OP_LESS_EQUAL.
  */
-extern KrkValue krk_operator_le(KrkValue,KrkValue);
+extern KRK_PUBLIC KrkValue krk_operator_le(KrkValue,KrkValue);
 
 /**
  * @brief Compare to values, returning @ref True if the left is greater than or equal to the right.
  *
  * This is equivalent to the opcode instruction OP_GREATER_EQUAL.
  */
-extern KrkValue krk_operator_ge(KrkValue,KrkValue);
+extern KRK_PUBLIC KrkValue krk_operator_ge(KrkValue,KrkValue);
 
 /**
  * @brief Set the maximum recursion call depth.
  *
  * Must not be called while execution is in progress.
  */
-extern void krk_setMaximumRecursionDepth(size_t maxDepth);
+extern KRK_PUBLIC void krk_setMaximumRecursionDepth(size_t maxDepth);
 
 /**
  * @brief Call a native function using a reference to stack arguments safely.
@@ -915,7 +915,7 @@ extern void krk_setMaximumRecursionDepth(size_t maxDepth);
  * held stack is reallocated, it will be freed when execution returns to the call
  * to @c krk_callNativeOnStack that holds it.
  */
-extern KrkValue krk_callNativeOnStack(size_t argCount, const KrkValue *stackArgs, int hasKw, NativeFn native);
+extern KRK_PUBLIC KrkValue krk_callNativeOnStack(size_t argCount, const KrkValue *stackArgs, int hasKw, NativeFn native);
 
 /**
  * @brief Set an attribute of an instance object, bypassing \__setattr__.
@@ -931,7 +931,7 @@ extern KrkValue krk_callNativeOnStack(size_t argCount, const KrkValue *stackArgs
  * @param to    New value for the attribute
  * @return The value set, which is likely @p to but may be the returned value of a descriptor \__set__ method.
  */
-extern KrkValue krk_instanceSetAttribute_wrapper(KrkValue owner, KrkString * name, KrkValue to);
+extern KRK_PUBLIC KrkValue krk_instanceSetAttribute_wrapper(KrkValue owner, KrkString * name, KrkValue to);
 
 /**
  * @brief Implementation of the GET_PROPERTY instruction.
@@ -946,7 +946,7 @@ extern KrkValue krk_instanceSetAttribute_wrapper(KrkValue owner, KrkString * nam
  * @param name Name of the attribute to look up.
  * @return 1 if the attribute was found, 0 otherwise.
  */
-extern int krk_getAttribute(KrkString * name);
+extern KRK_PUBLIC int krk_getAttribute(KrkString * name);
 
 /**
  * @brief Implementation of the SET_PROPERTY instruction.
@@ -963,7 +963,7 @@ extern int krk_getAttribute(KrkString * name);
  * @param name Name of the attribute to set.
  * @return 1 if the attribute could be set, 0 otherwise.
  */
-extern int krk_setAttribute(KrkString * name);
+extern KRK_PUBLIC int krk_setAttribute(KrkString * name);
 
 /**
  * @brief Implementation of the DEL_PROPERTY instruction.
@@ -978,21 +978,21 @@ extern int krk_setAttribute(KrkString * name);
  * @param name Name of the attribute to delete.
  * @return 1 if the attribute was found and can be deleted, 0 otherwise.
  */
-extern int krk_delAttribute(KrkString * name);
+extern KRK_PUBLIC int krk_delAttribute(KrkString * name);
 
 /**
  * @brief Initialize the built-in 'kuroko' module.
  */
-extern void krk_module_init_kuroko(void);
+extern KRK_PUBLIC void krk_module_init_kuroko(void);
 
 /**
  * @brief Initialize the built-in 'threading' module.
  *
  * Not available if KRK_DISABLE_THREADS is set.
  */
-extern void krk_module_init_threading(void);
+extern KRK_PUBLIC void krk_module_init_threading(void);
 
 /**
  * @brief Load all lib modules
  */
-extern void krk_module_init_libs(void);
+extern KRK_PUBLIC void krk_module_init_libs(void);

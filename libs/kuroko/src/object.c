@@ -8,8 +8,8 @@
 #include <kuroko/vm.h>
 #include <kuroko/table.h>
 #include <kuroko/threads.h>
+#include <kuroko/io.h>
 
-#include "libio.h"
 #include "private.h"
 
 #define ALLOCATE_OBJECT(type, objectType) \
