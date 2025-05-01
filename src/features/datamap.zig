@@ -183,63 +183,66 @@ pub fn CachedField(comptime field: struct {
     };
 }
 
-pub fn CachedFields(comptime fields: anytype) type {
-    comptime var field_tuple_fields: []const std.builtin.Type.StructField = &.{};
-    inline for (&fields, 0..) |*f, i| {
-        const T = CachedField(
-            .{
-                .T = f[0],
-                .map = f[1],
-                .field = f[2],
-                .is_server = f[3],
-                .additional_offset = if (f.len > 4) f[4] else 0,
-            },
-        );
+pub fn CachedFields(comptime field_infos: anytype) type {
+    comptime var tuple_fields: [field_infos.len]std.builtin.Type.StructField = undefined;
+    inline for (field_infos, &tuple_fields, 0..) |info, *field, field_idx| {
+        const additional_offset = switch (info.len) {
+            4 => 0,
+            5 => info[4],
+            else => @compileError("field info should have 4 or 5 elements"),
+        };
 
-        field_tuple_fields = field_tuple_fields ++ &[1]std.builtin.Type.StructField{.{
-            .name = std.fmt.comptimePrint("{d}", .{i}),
-            .type = T,
+        const FieldTy = CachedField(.{
+            .T = info[0],
+            .map = info[1],
+            .field = info[2],
+            .is_server = info[3],
+            .additional_offset = additional_offset,
+        });
+
+        field.* = .{
+            .name = std.fmt.comptimePrint("{d}", .{field_idx}),
+            .type = FieldTy,
             .default_value_ptr = null,
             .is_comptime = false,
-            .alignment = @alignOf(T),
-        }};
+            .alignment = @alignOf(FieldTy),
+        };
     }
 
-    const FieldTupleType = @Type(.{
-        .@"struct" = .{
-            .is_tuple = true,
-            .layout = .auto,
-            .decls = &.{},
-            .fields = field_tuple_fields,
-        },
-    });
+    const FieldTuple = @Type(.{ .@"struct" = .{
+        .is_tuple = true,
+        .layout = .auto,
+        .decls = &.{},
+        .fields = &tuple_fields,
+    } });
 
-    comptime var return_tuple_fields: []const std.builtin.Type.StructField = &.{};
-    inline for (&fields, 0..) |*f, i| {
-        const T = ?*f[0];
-
-        return_tuple_fields = return_tuple_fields ++ &[1]std.builtin.Type.StructField{.{
-            .name = std.fmt.comptimePrint("{d}", .{i}),
-            .type = T,
+    comptime var return_tuple_fields: [field_infos.len]std.builtin.Type.StructField = undefined;
+    inline for (field_infos, &return_tuple_fields, 0..) |info, *field, field_idx| {
+        const FieldTy = ?*info[0];
+        field.* = .{
+            .name = std.fmt.comptimePrint("{d}", .{field_idx}),
+            .type = FieldTy,
             .default_value_ptr = null,
             .is_comptime = false,
-            .alignment = @alignOf(T),
-        }};
+            .alignment = @alignOf(FieldTy),
+        };
     }
 
-    const ReturnTupleType = @Type(.{
-        .@"struct" = .{
-            .is_tuple = true,
-            .layout = .auto,
-            .decls = &.{},
-            .fields = return_tuple_fields,
-        },
-    });
+    const ReturnTuple = @Type(.{ .@"struct" = .{
+        .is_tuple = true,
+        .layout = .auto,
+        .decls = &.{},
+        .fields = &return_tuple_fields,
+    } });
 
     return struct {
         const Self = @This();
 
-        fields: FieldTupleType = std.mem.zeroes(FieldTupleType),
+        fields: FieldTuple = default: {
+            var x: FieldTuple = undefined;
+            for (&x) |*f| f.* = .{};
+            break :default x;
+        },
 
         pub fn hasAll(self: *Self) bool {
             inline for (&self.fields) |*f| {
@@ -250,10 +253,10 @@ pub fn CachedFields(comptime fields: anytype) type {
             return true;
         }
 
-        pub fn getAllPtrs(self: *Self, ent: *anyopaque) ReturnTupleType {
-            var result: ReturnTupleType = undefined;
-            inline for (&self.fields, 0..) |*f, i| {
-                result[i] = f.getPtr(ent);
+        pub fn getAllPtrs(self: *Self, ent: *anyopaque) ReturnTuple {
+            var result: ReturnTuple = undefined;
+            inline for (&result, &self.fields) |*res, *f| {
+                res.* = f.getPtr(ent);
             }
             return result;
         }
