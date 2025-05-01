@@ -861,6 +861,28 @@ int krk_isFalsey(KrkValue value) {
 	return 0; /* Assume anything else is truthy */
 }
 
+int krk_valueAsNumber(KrkValue value, double* out) {
+	if (IS_FLOATING(value)){
+		*out = AS_FLOATING(value);
+		return 1;
+	}
+
+	if (IS_INTEGER(value)) {
+		*out = (double)AS_INTEGER(value);
+		return 1;
+	}
+
+	KrkClass * type = krk_getType(value);
+	krk_push(value);
+	if (!krk_bindMethod(type, S("__float__"))) {
+		krk_pop();
+		return 0;
+	}
+	value = krk_callStack(0);
+	*out = AS_FLOATING(value);
+	return 1;
+}
+
 void krk_setMaximumRecursionDepth(size_t maxDepth) {
 	krk_currentThread.maximumCallDepth = maxDepth;
 	krk_currentThread.frames = realloc(krk_currentThread.frames, maxDepth * sizeof(KrkCallFrame));

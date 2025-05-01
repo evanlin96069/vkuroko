@@ -43,6 +43,7 @@ pub const KrkValue = packed struct(u64) {
     extern "c" fn krk_valueGetAttribute_default(value: KrkValue, name: [*:0]const u8, default_val: KrkValue) KrkValue;
     extern "c" fn krk_valueSetAttribute(owner: KrkValue, name: [*:0]const u8, to: KrkValue) KrkValue;
     extern "c" fn krk_valueDelAttribute(owner: KrkValue, name: [*:0]const u8) KrkValue;
+    extern "c" fn krk_valueAsNumber(value: KrkValue, out: *f64) c_int;
     extern "c" fn krk_unpackIterable(
         iterable: KrkValue,
         context: *anyopaque,
@@ -330,6 +331,14 @@ pub const KrkValue = packed struct(u64) {
 
     pub inline fn asFloat(v: KrkValue) f64 {
         return @bitCast(v);
+    }
+
+    pub inline fn asNumber(v: KrkValue) ?f64 {
+        var result: f64 = undefined;
+        if (krk_valueAsNumber(v, &result) == 0) {
+            return null;
+        }
+        return result;
     }
 
     pub inline fn asString(v: KrkValue) *KrkString {

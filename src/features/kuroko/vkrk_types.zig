@@ -15,22 +15,6 @@ const KrkInstance = kuroko.KrkInstance;
 const KrkClass = kuroko.KrkClass;
 const KrkList = kuroko.KrkList;
 
-fn getFloat(value: KrkValue) ?f32 {
-    if (!value.isFloat()) {
-        const ty = value.getType();
-        VM.push(value);
-        if (!ty.bindMethodOnStack(KrkString.copyString("__float__"))) {
-            VM.pop();
-            return null;
-        }
-        const result: f32 = @floatCast(VM.callStack(0).asFloat());
-        VM.resetStack();
-        return result;
-    } else {
-        return @floatCast(value.asFloat());
-    }
-}
-
 pub const Vector = struct {
     var class: *KrkClass = undefined;
 

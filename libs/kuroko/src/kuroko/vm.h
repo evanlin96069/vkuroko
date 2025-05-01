@@ -806,6 +806,18 @@ extern KRK_PUBLIC int krk_importModule(KrkString * name, KrkString * runAs);
 extern KRK_PUBLIC int krk_isFalsey(KrkValue value);
 
 /**
+ * @brief Convert value to number
+ * @memberof KrkValue
+ *
+ * If value is float, returns it, otherwise, try calling @c \__float__
+ *
+ * @param value Value to convert.
+ * @param out output result.
+ * @return 1 of conversion success, 0 otherwise.
+ */
+extern KRK_PUBLIC int krk_valueAsNumber(KrkValue value, double* out);
+
+/**
  * @brief Obtain a property of an object by name.
  * @memberof KrkValue
  *
