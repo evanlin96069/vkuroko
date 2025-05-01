@@ -1,0 +1,49 @@
+class PlayerInfo:
+    def __init__(self, pos, ang, vel, ducked, grounded, water_level, entity_friction):
+        self.pos = pos
+        self.ang = ang
+        self.vel = vel
+        self.ducked = ducked
+        self.grounded = grounded
+        self.water_level = water_level
+        self.entity_friction = entity_friction
+
+    def __repr__(self):
+        return (
+            f"PlayerInfo(\n"
+            f"  pos={self.pos},\n"
+            f"  ang={self.ang},\n"
+            f"  vel={self.vel},\n"
+            f"  ducked={self.ducked},\n"
+            f"  grounded={self.grounded},\n"
+            f"  water_level={self.water_level},\n"
+            f"  entity_friction={self.entity_friction}\n)"
+        )
+
+
+class PortalInfo:
+    def __init__(self, index, linked_index, pos, ang,
+                 is_orange, is_activated, is_open, linkage_id, matrix=None):
+        self.index = index
+        self.linked_index = linked_index
+        self.pos = pos
+        self.ang = ang
+        self.is_orange = is_orange
+        self.is_activated = is_activated
+        self.is_open = is_open
+        self.linkage_id = linkage_id
+        self.matrix_this_to_linked = matrix if matrix is not None else VMatrix()
+
+    def __repr__(self):
+        return (
+            f"PortalInfo(\n"
+            f"  index={self.index},\n"
+            f"  linked_index={self.linked_index},\n"
+            f"  pos={self.pos},\n"
+            f"  ang={self.ang},\n"
+            f"  is_orange={self.is_orange},\n"
+            f"  is_activated={self.is_activated},\n"
+            f"  is_open={self.is_open},\n"
+            f"  linkage_id={self.linkage_id},\n"
+            f"  matrix_this_to_linked={self.matrix_this_to_linked}\n)"
+        )

@@ -17,10 +17,12 @@ const KrkString = kuroko.KrkString;
 const KrkInstance = kuroko.KrkInstance;
 const StringBuilder = kuroko.StringBuilder;
 
+const vkrk_types = @import("vkrk_types.zig");
 const vkrk_console = @import("vkrk_console.zig");
 const vkrk_game = @import("vkrk_game.zig");
 const vkrk_event = @import("vkrk_event.zig");
 const vkrk_hud = @import("vkrk_hud.zig");
+const vkrk_entity = @import("vkrk_entity.zig");
 
 pub const log = std.log.scoped(.kuroko);
 
@@ -154,13 +156,12 @@ pub fn initVkurokoModule() void {
     module = VM.startModule(module_name);
     module.setDoc("@brief Source Engine module.");
 
-    vkrk_console.bindAttributes(vkrk_module);
-    vkrk_game.bindAttributes(vkrk_module);
-    vkrk_hud.bindAttributes(vkrk_module);
-    vkrk_event.bindAttributes(vkrk_module);
-
-    _ = VM.interpret(@embedFile("scripts/config.krk"), vkrk_module_name);
-    _ = VM.interpret(@embedFile("scripts/event.krk"), vkrk_module_name);
+    vkrk_types.bindAttributes(module);
+    vkrk_console.bindAttributes(module);
+    vkrk_game.bindAttributes(module);
+    vkrk_hud.bindAttributes(module);
+    vkrk_event.bindAttributes(module);
+    vkrk_entity.bindAttributes(module);
 }
 
 fn shouldLoad() bool {
