@@ -18,6 +18,9 @@ const IServerEntity = sdk.IServerEntity;
 const IClientEntity = sdk.IClientEntity;
 const Vector = sdk.Vector;
 const QAngle = sdk.QAngle;
+const VMatrix = sdk.VMatrix;
+
+const game_detection = @import("../utils/game_detection.zig");
 
 pub var feature: Feature = .{
     .name = "entity list",
@@ -36,6 +39,7 @@ pub const PortalInfo = struct {
     is_activated: bool = false,
     is_open: bool = false,
     linkage_id: u8 = 0,
+    matrix_this_to_linked: VMatrix = std.mem.zeroes(VMatrix),
 };
 
 fn EntityList(comptime is_server: bool) type {
@@ -143,7 +147,7 @@ fn EntityList(comptime is_server: bool) type {
             }
         }
 
-        pub fn getPlayer(self: *const Self) EntType {
+        pub fn getPlayer(self: *const Self) ?EntType {
             return self.getEntity(1);
         }
 
@@ -167,13 +171,14 @@ fn EntityList(comptime is_server: bool) type {
                         .{ bool, "CProp_Portal", "CProp_Portal::m_bIsPortal2", true },
                         .{ bool, "CProp_Portal", "CProp_Portal::m_bActivated", true },
                         .{ u8, "CProp_Portal", "CProp_Portal::m_iLinkageGroupID", true },
+                        .{ VMatrix, "CProp_Portal", "CProp_Portal::m_matrixThisToLinked", true },
                     }){};
                 };
                 if (!S.fields.hasAll()) {
                     return .{};
                 }
 
-                const pos, const ang, const linked, const p2, const activated, const linkage_id = S.fields.getAllPtrs(ent);
+                const pos, const ang, const linked, const p2, const activated, const linkage_id, const mat = S.fields.getAllPtrs(ent);
 
                 return .{
                     .ent = ent,
@@ -185,6 +190,7 @@ fn EntityList(comptime is_server: bool) type {
                     .is_activated = activated.?.*,
                     .is_open = linked.?.isValid(),
                     .linkage_id = linkage_id.?.*,
+                    .matrix_this_to_linked = mat.?.*,
                 };
             } else {
                 // TODO: Implement client portal
@@ -212,31 +218,43 @@ fn print_portals_Fn(args: *const tier1.CCommand) callconv(.C) void {
     }
 
     const portals = server_list.getPortalList() catch return;
+    if (portals.items.len == 0) {
+        std.log.info("No portals", .{});
+        return;
+    }
+
     for (portals.items) |portal| {
         std.log.info(
-            "[{d}] {s} {s} portal",
+            \\[{d}] {s} {s} portal
+            \\    pos: {d:.9} {d:.9} {d:.9}
+            \\    ang: {d:.9} {d:.9} {d:.9}
+            \\    linkage id: {d}
+            \\    linked portal: {d}
+        ,
             .{
                 portal.handle.getEntryIndex(),
                 if (portal.linked_handle.isValid()) "open" else if (portal.is_activated) "closed" else "invisible",
                 if (portal.is_orange) "orange" else "blue",
+                portal.pos.x,
+                portal.pos.y,
+                portal.pos.z,
+                portal.ang.x,
+                portal.ang.y,
+                portal.ang.z,
+                portal.linkage_id,
+                if (portal.linked_handle.isValid()) portal.linked_handle.getEntryIndex() else -1,
             },
         );
-        std.log.info("    pos: {d:.9} {d:.9} {d:.9}", .{ portal.pos.x, portal.pos.y, portal.pos.z });
-        std.log.info("    ang: {d:.9} {d:.9} {d:.9}", .{ portal.ang.x, portal.ang.y, portal.ang.z });
-        std.log.info("    linkage id: {d}", .{portal.linkage_id});
-        if (portal.linked_handle.isValid()) {
-            std.log.info("    linked portal: {d}", .{portal.linked_handle.getEntryIndex()});
-        }
     }
 }
 
-var vkrk_print_entitys = ConCommand.init(.{
+var vkrk_print_ents = ConCommand.init(.{
     .name = "vkrk_print_ents",
-    .help_string = "Prints all entitys.",
-    .command_callback = print_entitys_Fn,
+    .help_string = "Prints all entities.",
+    .command_callback = print_ents_Fn,
 });
 
-fn print_entitys_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn print_ents_Fn(args: *const tier1.CCommand) callconv(.C) void {
     _ = args;
 
     if (server_list.isValid()) {
@@ -259,8 +277,10 @@ fn shouldLoad() bool {
 }
 
 fn init() bool {
-    vkrk_print_portals.register();
-    vkrk_print_entitys.register();
+    if (game_detection.doesGameLooksLikePortal()) {
+        vkrk_print_portals.register();
+    }
+    vkrk_print_ents.register();
     return true;
 }
 

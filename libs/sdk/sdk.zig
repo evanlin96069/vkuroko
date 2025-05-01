@@ -316,6 +316,10 @@ pub const Matrix3x4 = extern struct {
     mat_val: [3][4]f32,
 };
 
+pub const VMatrix = extern struct {
+    m: [4][4]f32,
+};
+
 pub const Ray = extern struct {
     start: VectorAligned,
     delta: VectorAligned,
