@@ -31,8 +31,8 @@ pub var feature: Feature = .{
     .deinit = deinit,
 };
 
-const vkrk_module_name = "vkuroko";
-pub var vkrk_module: *KrkInstance = undefined;
+pub const module_name = "vkuroko";
+pub var module: *KrkInstance = undefined;
 
 const krk_from_file = "<console>";
 
@@ -151,8 +151,8 @@ fn initKrkVM() void {
 }
 
 pub fn initVkurokoModule() void {
-    vkrk_module = VM.startModule(vkrk_module_name);
-    vkrk_module.setDoc("@brief Source Engine module.");
+    module = VM.startModule(module_name);
+    module.setDoc("@brief Source Engine module.");
 
     vkrk_console.bindAttributes(vkrk_module);
     vkrk_game.bindAttributes(vkrk_module);

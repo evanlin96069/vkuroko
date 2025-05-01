@@ -9,6 +9,10 @@ const KrkString = kuroko.KrkString;
 const KrkInstance = kuroko.KrkInstance;
 
 pub fn bindAttributes(module: *KrkInstance) void {
+    if (!texthud.feature.loaded) {
+        return;
+    }
+
     module.bindFunction("draw_text_hud", draw_text_hud).setDoc(
         \\@brief Draws text HUD, should only be called in `on_tick` event.
     );

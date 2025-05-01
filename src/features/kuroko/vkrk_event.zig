@@ -4,6 +4,8 @@ const core = @import("../../core.zig");
 const texthud = @import("../texthud.zig");
 const event = @import("../../event.zig");
 
+const vkrk = @import("kuroko.zig");
+
 const kuroko = @import("kuroko");
 const VM = kuroko.KrkVM;
 const KrkValue = kuroko.KrkValue;
@@ -19,6 +21,8 @@ pub fn bindAttributes(module: *KrkInstance) void {
     while (it.next()) |kv| {
         kv.value_ptr.clearAndFree();
     }
+
+    _ = VM.interpret(@embedFile("scripts/event.krk"), vkrk.module_name);
 }
 
 pub fn init() void {

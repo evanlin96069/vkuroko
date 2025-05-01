@@ -6,6 +6,8 @@ const tier0 = modules.tier0;
 const tier1 = modules.tier1;
 const engine = modules.engine;
 
+const vkrk = @import("kuroko.zig");
+
 const kuroko = @import("kuroko");
 const VM = kuroko.KrkVM;
 const KrkValue = kuroko.KrkValue;
@@ -83,6 +85,8 @@ pub fn bindAttributes(module: *KrkInstance) void {
         \\@brief Invokes the callback function of the command.
     );
     ConCommand.class.finalizeClass();
+
+    _ = VM.interpret(@embedFile("scripts/config.krk"), vkrk.module_name);
 }
 
 fn cmd(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
