@@ -34,17 +34,89 @@ pub const CServerPlugin = extern struct {
     plugin_helper_check: *anyopaque,
 };
 
-pub const MAX_EDICTS = 1 << 11;
+pub const MAX_EDICT_BITS = 11;
+pub const MAX_EDICTS = 1 << MAX_EDICT_BITS;
 
-pub const IServerUnknown = extern struct {
+pub const NUM_ENT_ENTRY_BITS = MAX_EDICT_BITS + 1;
+pub const NUM_ENT_ENTRIES = 1 << NUM_ENT_ENTRY_BITS;
+pub const ENT_ENTRY_MASK = NUM_ENT_ENTRIES - 1;
+pub const INVALID_EHANDLE_INDEX = 0xFFFFFFFF;
+pub const NUM_SERIAL_NUM_BITS = 32 - NUM_ENT_ENTRY_BITS;
+
+pub const CBaseHandle = extern struct {
+    index: c_ulong = INVALID_EHANDLE_INDEX,
+
+    pub fn isValid(self: *const CBaseHandle) bool {
+        return self.index != INVALID_EHANDLE_INDEX;
+    }
+
+    pub fn getEntryIndex(self: *const CBaseHandle) c_int {
+        return @intCast(self.index & ENT_ENTRY_MASK);
+    }
+
+    pub fn getSerialNumber(self: *const CBaseHandle) c_int {
+        return self.index >> NUM_ENT_ENTRY_BITS;
+    }
+};
+
+pub const ClientClass = extern struct {
+    createFn: *anyopaque,
+    createEventFn: *anyopaque,
+    network_name: [*:0]const u8,
+    recv_table: *anyopaque,
+    next: *ClientClass,
+    class_id: c_int,
+
+    pub fn getName(self: *ClientClass) [*:0]const u8 {
+        return self.network_name;
+    }
+};
+
+pub const IClientEntity = extern struct {
+    _vt_IClientUnknown: [*]*const anyopaque,
+    _vt_IClientRenderable: [*]*const anyopaque,
+    _vt_IClientNetworkable: [*]*const anyopaque,
+    _vt_IClientThinkable: [*]*const anyopaque,
+
+    const VTIndexIClientUnknown = struct {
+        const getRefEHandle = 2;
+    };
+
+    const VTIndexIClientNetworkable = struct {
+        const getClientClass = 2;
+    };
+
+    pub fn getRefEHandle(self: *const IClientEntity) *const CBaseHandle {
+        const _getRefEHandle: *const fn (this: *const anyopaque) callconv(.Thiscall) *const CBaseHandle = @ptrCast(self._vt_IClientUnknown[VTIndexIClientUnknown.getRefEHandle]);
+        return _getRefEHandle(self);
+    }
+
+    pub fn getClientClass(self: *const IClientEntity) *ClientClass {
+        const _getClientClass: *const fn (this: *const anyopaque) callconv(.Thiscall) *ClientClass = @ptrCast(self._vt_IClientNetworkable[VTIndexIClientNetworkable.getClientClass]);
+        return _getClientClass(self);
+    }
+};
+
+pub const ServerClass = extern struct {
+    network_name: [*:0]const u8,
+    send_table: *anyopaque,
+    next: *ServerClass,
+    class_id: c_int,
+
+    pub fn getName(self: *ServerClass) [*:0]const u8 {
+        return self.network_name;
+    }
+};
+
+pub const IServerEntity = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
         const getRefEHandle = 2;
     };
 
-    pub fn getRefEHandle(self: *const IServerUnknown) *const c_ulong {
-        const _getRefEHandle: *const fn (this: *const anyopaque) callconv(.Thiscall) *const c_ulong = @ptrCast(self._vt[VTIndex.getRefEHandle]);
+    pub fn getRefEHandle(self: *const IServerEntity) *const CBaseHandle {
+        const _getRefEHandle: *const fn (this: *const anyopaque) callconv(.Thiscall) *const CBaseHandle = @ptrCast(self._vt[VTIndex.getRefEHandle]);
         return _getRefEHandle(self);
     }
 };
@@ -66,7 +138,7 @@ pub const Edict = extern struct {
     state_flags: FEdict,
     network_serial_number: c_int,
     networkable: *anyopaque,
-    unknown: *IServerUnknown,
+    unknown: *IServerEntity,
     freetime: f32,
 
     pub fn getOffsetField(self: *Edict, comptime T: type, offset: usize) *T {
@@ -74,7 +146,7 @@ pub const Edict = extern struct {
         return @ptrCast(addr + offset);
     }
 
-    pub fn getIServerEntity(self: *Edict) ?*IServerUnknown {
+    pub fn getIServerEntity(self: *Edict) ?*IServerEntity {
         if (self.state_flags.full) {
             return self.unknown;
         }
@@ -465,7 +537,7 @@ pub const CUserCmd = extern struct {
 pub const CMoveData = extern struct {
     flages: u8,
 
-    player_handle: c_ulong,
+    player_handle: CBaseHandle,
 
     impluse_command: c_int,
     view_angles: QAngle,

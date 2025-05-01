@@ -3,9 +3,9 @@ const engine = modules.engine;
 const client = modules.client;
 
 const sdk = @import("sdk");
-const IServerUnknown = sdk.IServerUnknown;
+const IServerEntity = sdk.IServerEntity;
 
-pub fn getServerPlayer() ?*IServerUnknown {
+pub fn getServerPlayer() ?*IServerEntity {
     if (engine.server.pEntityOfEntIndex(1)) |ed| {
         return ed.getIServerEntity();
     }

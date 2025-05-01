@@ -71,8 +71,14 @@ const IVEngineServer = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
+        const getEntityCount = 17;
         const pEntityOfEntIndex = 19;
     };
+
+    pub fn getEntityCount(self: *IVEngineServer) c_int {
+        const _getEntityCount: *const fn (this: *anyopaque) callconv(.Thiscall) c_int = @ptrCast(self._vt[VTIndex.getEntityCount]);
+        return _getEntityCount(self);
+    }
 
     pub fn pEntityOfEntIndex(self: *IVEngineServer, index: c_int) ?*Edict {
         const _pEntityOfEntIndex: *const fn (this: *anyopaque, index: c_int) callconv(.Thiscall) ?*Edict = @ptrCast(self._vt[VTIndex.pEntityOfEntIndex]);
@@ -134,6 +140,19 @@ const IVEngineClient = extern struct {
     }
 };
 
+const IEngineTool = extern struct {
+    _vt: [*]*const anyopaque,
+
+    const VTIndex = struct {
+        const hostFrameTime = 40;
+    };
+
+    pub fn hostFrameTime(self: *IEngineTool) c_int {
+        const _hostFrameTime: *const fn (this: *anyopaque) callconv(.Thiscall) c_int = @ptrCast(self._vt[VTIndex.hostFrameTime]);
+        return _hostFrameTime(self);
+    }
+};
+
 const IEngineTrace = extern struct {
     _vt: [*]*const anyopaque,
 
@@ -156,6 +175,8 @@ const IEngineTrace = extern struct {
 pub var server: *IVEngineServer = undefined;
 pub var client: *IVEngineClient = undefined;
 
+pub var tool: *IEngineTool = undefined;
+
 pub var trace_server: *IEngineTrace = undefined;
 pub var trace_client: *IEngineTrace = undefined;
 
@@ -176,6 +197,11 @@ fn init() bool {
 
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
         core.log.err("Failed to get IVEngineServer interface", .{});
+        return false;
+    });
+
+    tool = @ptrCast(interfaces.engineFactory("VENGINETOOL003", null) orelse {
+        core.log.err("Failed to get IEngineTool interface", .{});
         return false;
     });
 

@@ -135,10 +135,129 @@ fn addFields(
     }
 }
 
+pub fn getFieldOffset(map: []const u8, field: []const u8, is_server: bool) ?usize {
+    const data_map = if (is_server) &server_map else &client_map;
+    if (data_map.get(map)) |m| {
+        return m.get(field);
+    }
+    return null;
+}
+
 pub fn getField(comptime T: type, ptr: *anyopaque, offset: usize) *T {
     const base: [*]u8 = @ptrCast(ptr);
     const field: *T = @alignCast(@ptrCast(base + offset));
     return field;
+}
+
+pub fn CachedField(comptime field: struct {
+    T: type,
+    map: []const u8,
+    field: []const u8,
+    is_server: bool,
+    additional_offset: i32 = 0,
+}) type {
+    return struct {
+        const Self = @This();
+
+        offset: ?usize = null,
+
+        pub fn get(self: *Self) ?usize {
+            if (self.offset) |v| {
+                return @intCast(@as(i32, @intCast(v)) + field.additional_offset);
+            }
+            const off = getFieldOffset(field.map, field.field, field.is_server);
+            self.offset = off;
+            return if (off) |v| @intCast(@as(i32, @intCast(v)) + field.additional_offset) else null;
+        }
+
+        pub fn exists(self: *Self) bool {
+            return self.get() != null;
+        }
+
+        pub fn getPtr(self: *Self, ent: *anyopaque) ?*field.T {
+            if (self.get()) |offset| {
+                return getField(field.T, ent, offset);
+            }
+            return null;
+        }
+    };
+}
+
+pub fn CachedFields(comptime fields: anytype) type {
+    comptime var field_tuple_fields: []const std.builtin.Type.StructField = &.{};
+    inline for (&fields, 0..) |*f, i| {
+        const T = CachedField(
+            .{
+                .T = f[0],
+                .map = f[1],
+                .field = f[2],
+                .is_server = f[3],
+                .additional_offset = if (f.len > 4) f[4] else 0,
+            },
+        );
+
+        field_tuple_fields = field_tuple_fields ++ &[1]std.builtin.Type.StructField{.{
+            .name = std.fmt.comptimePrint("{d}", .{i}),
+            .type = T,
+            .default_value_ptr = null,
+            .is_comptime = false,
+            .alignment = @alignOf(T),
+        }};
+    }
+
+    const FieldTupleType = @Type(.{
+        .@"struct" = .{
+            .is_tuple = true,
+            .layout = .auto,
+            .decls = &.{},
+            .fields = field_tuple_fields,
+        },
+    });
+
+    comptime var return_tuple_fields: []const std.builtin.Type.StructField = &.{};
+    inline for (&fields, 0..) |*f, i| {
+        const T = ?*f[0];
+
+        return_tuple_fields = return_tuple_fields ++ &[1]std.builtin.Type.StructField{.{
+            .name = std.fmt.comptimePrint("{d}", .{i}),
+            .type = T,
+            .default_value_ptr = null,
+            .is_comptime = false,
+            .alignment = @alignOf(T),
+        }};
+    }
+
+    const ReturnTupleType = @Type(.{
+        .@"struct" = .{
+            .is_tuple = true,
+            .layout = .auto,
+            .decls = &.{},
+            .fields = return_tuple_fields,
+        },
+    });
+
+    return struct {
+        const Self = @This();
+
+        fields: FieldTupleType = std.mem.zeroes(FieldTupleType),
+
+        pub fn hasAll(self: *Self) bool {
+            inline for (&self.fields) |*f| {
+                if (!f.exists()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        pub fn getAllPtrs(self: *Self, ent: *anyopaque) ReturnTupleType {
+            var result: ReturnTupleType = undefined;
+            inline for (&self.fields, 0..) |*f, i| {
+                result[i] = f.getPtr(ent);
+            }
+            return result;
+        }
+    };
 }
 
 fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize))) !void {

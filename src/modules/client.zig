@@ -27,8 +27,8 @@ const IClientEntityList = extern struct {
         const getHighestEntityIndex = 6;
     };
 
-    pub fn getClientEntity(self: *IClientEntityList, index: c_int) ?*anyopaque {
-        const _getClientEntity: *const fn (this: *anyopaque, index: c_int) callconv(.Thiscall) ?*anyopaque = @ptrCast(self._vt[VTIndex.getClientEntity]);
+    pub fn getClientEntity(self: *IClientEntityList, index: c_int) ?*sdk.IClientEntity {
+        const _getClientEntity: *const fn (this: *anyopaque, index: c_int) callconv(.Thiscall) ?*sdk.IClientEntity = @ptrCast(self._vt[VTIndex.getClientEntity]);
         return _getClientEntity(self, index);
     }
 

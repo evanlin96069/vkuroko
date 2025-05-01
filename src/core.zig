@@ -49,6 +49,7 @@ const features: []const *Feature = mods: {
     var mods: []const *Feature = &.{};
     for (&.{
         @import("features/datamap.zig"),
+        @import("features/entlist.zig"),
         @import("features/texthud.zig"),
         @import("features/playerio.zig"),
         @import("features/kuroko/kuroko.zig"),
