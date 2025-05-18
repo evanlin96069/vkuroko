@@ -177,8 +177,8 @@ const ConVar = extern struct {
         var default_value: KrkValue = undefined;
         var help_string: ?[*:0]const u8 = null;
         var flags: i32 = 0;
-        var min_value: KrkValue = KrkValue.noneValue();
-        var max_value: KrkValue = KrkValue.noneValue();
+        var min_value = KrkValue.noneValue();
+        var max_value = KrkValue.noneValue();
 
         if (!kuroko.parseArgs(
             "__init__",
@@ -396,10 +396,12 @@ const ConVar = extern struct {
 
 const ConCommand = extern struct {
     inst: KrkInstance,
-    command: ?*tier1.ConCommand,
+    command: ?*tier1.ConCommand = null,
 
+    name: ?[*:0]const u8,
+    help_str: ?[*:0]const u8,
     flags: i32 = 0,
-    completion_callback: KrkValue,
+    completion_callback: KrkValue = KrkValue.noneValue(),
 
     var class: *KrkClass = undefined;
 
@@ -411,27 +413,37 @@ const ConCommand = extern struct {
         return @ptrCast(v.asObject());
     }
 
-    fn createCommand(self: KrkValue, callback: KrkValue, flags: i32, completion_callback: KrkValue) KrkValue {
+    fn createCommand(self: KrkValue, name: ?[*:0]const u8, help_str: ?[*:0]const u8, callback: KrkValue, flags: i32, completion_callback: KrkValue) KrkValue {
         const inst = asConCommand(self);
-        const v_name = callback.getAttribute("__name__");
-        if (v_name.isNone()) {
-            return KrkValue.noneValue();
-        }
-        const name = v_name.asString().chars;
 
-        if (tier1.icvar.findCommandBase(name) != null) {
+        var c_name: [*:0]const u8 = undefined;
+        if (name) |s| {
+            c_name = s;
+        } else {
+            const v_name = callback.getAttributeDefault("__name__", KrkValue.noneValue());
+            if (!v_name.isString()) {
+                return VM.getInstance().exceptions.valueError.runtimeError("name should be str", .{});
+            }
+            c_name = v_name.asString().chars;
+        }
+
+        if (tier1.icvar.findCommandBase(c_name) != null) {
             return VM.getInstance().exceptions.valueError.runtimeError("name already exists", .{});
         }
 
-        const v_doc = callback.getAttributeDefault("__doc__", KrkValue.noneValue());
-        var help_string: [*:0]const u8 = "";
-        if (v_doc.isString()) {
-            help_string = v_doc.asString().chars;
+        var c_doc: [*:0]const u8 = "";
+        if (help_str) |s| {
+            c_doc = s;
+        } else {
+            const v_doc = callback.getAttributeDefault("__doc__", KrkValue.noneValue());
+            if (v_doc.isString()) {
+                c_doc = v_doc.asString().chars;
+            }
         }
 
         const dyn_cmd = DynConCommand.create(.{
-            .name = name,
-            .help_string = help_string,
+            .name = c_name,
+            .help_string = c_doc,
             .flags = @bitCast(flags),
             .callback = callback,
             .completion_callback = completion_callback,
@@ -443,23 +455,29 @@ const ConCommand = extern struct {
     }
 
     fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
-        var callback: KrkValue = KrkValue.noneValue();
-        var completion: KrkValue = KrkValue.noneValue();
+        var callback = KrkValue.noneValue();
+        var name: ?[*:0]const u8 = null;
+        var help_str: ?[*:0]const u8 = null;
         var flags: i32 = 0;
+        var completion = KrkValue.noneValue();
 
         if (!kuroko.parseArgs(
             "__init__",
             argc,
             argv,
             has_kw,
-            ".|ViV",
+            ".|VssiV",
             &.{
-                "callback",
+                "callback", // callback has to be first, in case the decorator has no arguments
+                "name",
+                "help_str",
                 "flags",
                 "completion",
             },
             .{
                 &callback,
+                &name,
+                &help_str,
                 &flags,
                 &completion,
             },
@@ -473,12 +491,14 @@ const ConCommand = extern struct {
 
         const inst = asConCommand(argv[0]);
         if (callback.isNone()) {
+            inst.name = name;
+            inst.help_str = help_str;
             inst.flags = flags;
             inst.completion_callback = completion;
             return KrkValue.noneValue();
         }
 
-        const result = createCommand(argv[0], callback, flags, completion);
+        const result = createCommand(argv[0], name, help_str, callback, flags, completion);
         if (VM.getCurrentThread().flags.thread_has_exception) {
             return result;
         }
@@ -500,7 +520,7 @@ const ConCommand = extern struct {
             if (argc != 2) {
                 return VM.getInstance().exceptions.argumentError.runtimeError("__call__() should be use as a decorator when ConCommand is not initialized", .{});
             }
-            return createCommand(argv[0], argv[1], self.flags, self.completion_callback);
+            return createCommand(argv[0], self.name, self.help_str, argv[1], self.flags, self.completion_callback);
         }
 
         const command = self.command.?;
