@@ -54,8 +54,11 @@ const CGameMovement = extern struct {
     }
 
     fn hookedGetPlayerMinsV2(this: *const CGameMovement, out: *Vector) callconv(.Thiscall) void {
+        @setRuntimeSafety(false);
+
         if (override_minmax) {
             out.* = _mins.*;
+            return;
         }
         origGetPlayerMinsV2.?(this, out);
     }
@@ -71,8 +74,11 @@ const CGameMovement = extern struct {
     }
 
     fn hookedGetPlayerMaxsV2(this: *const CGameMovement, out: *Vector) callconv(.Thiscall) void {
+        @setRuntimeSafety(false);
+
         if (override_minmax) {
             out.* = _maxs.*;
+            return;
         }
         origGetPlayerMaxsV2.?(this, out);
     }
