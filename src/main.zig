@@ -19,6 +19,8 @@ pub const std_options: std.Options = .{
     .logFn = @import("log.zig").log,
 };
 
+pub const panic = std.debug.FullPanic(@import("panic.zig").panicFn);
+
 var plugin_loaded: bool = false;
 var skip_unload: bool = false;
 
