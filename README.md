@@ -10,14 +10,14 @@ More bindings and TAS support are still being developed.
 - Portal (3420)
 - Portal (4104)
 - Portal (5135)
-- Portal (latest)
+- Portal (latest) [Load via addons]
 - Half-Life 2 (5135)
 - Half-Life 2 (latest) [Load via addons]
 
 ## Build
 Only Windows build.
 
-Use [zig 0.14.0](https://ziglang.org/download/#release-0.14.0)
+Use [zig 0.14.1](https://ziglang.org/download/#release-0.14.1)
 
 ```sh
 zig build
