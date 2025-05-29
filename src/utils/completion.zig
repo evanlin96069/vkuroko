@@ -147,7 +147,10 @@ pub const FileCompletion = struct {
         }
 
         var cached: bool = false;
-        if (self.cached_directory) |s| {
+
+        if (arg1.len == 0) {
+            cached = false;
+        } else if (self.cached_directory) |s| {
             cached = std.mem.eql(u8, dir_name, s);
         }
 
