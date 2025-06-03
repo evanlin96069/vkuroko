@@ -31,7 +31,7 @@ pub const FCvar = packed struct(c_uint) {
     _pad_2: u9 = 0,
 };
 
-const ConCommandBase = extern struct {
+pub const ConCommandBase = extern struct {
     _vt: *align(@alignOf(*anyopaque)) const anyopaque = undefined,
     next: ?*ConCommandBase = null,
     registered: bool = false,
@@ -41,7 +41,7 @@ const ConCommandBase = extern struct {
 
     const VTable = extern struct {
         destruct: *const anyopaque,
-        isCommand: *const fn (this: *anyopaque) callconv(.Thiscall) bool,
+        isCommand: *const fn (this: *const anyopaque) callconv(.Thiscall) bool,
         isFlagSet: *const anyopaque,
         addFlags: *const anyopaque,
         getName: *const anyopaque,
@@ -267,7 +267,14 @@ pub const ConVar = extern struct {
         icvar.registerConCommandBase(@ptrCast(self));
     }
 
-    fn getParent(self: *const ConVar) *const ConVar {
+    pub fn getParent(self: *ConVar) *ConVar {
+        if (self.parent) |parent| {
+            return parent;
+        }
+        return self;
+    }
+
+    pub fn getParentConst(self: *const ConVar) *const ConVar {
         if (self.parent) |parent| {
             return parent;
         }
@@ -275,11 +282,11 @@ pub const ConVar = extern struct {
     }
 
     pub fn getString(self: *const ConVar) [:0]const u8 {
-        if (self.getParent().base1.flags.never_as_string) {
+        if (self.getParentConst().base1.flags.never_as_string) {
             return "FCVAR_NEVER_AS_STRING";
         }
 
-        if (self.getParent().string_value) |s| {
+        if (self.getParentConst().string_value) |s| {
             return std.mem.span(s);
         }
 
@@ -287,11 +294,11 @@ pub const ConVar = extern struct {
     }
 
     pub fn getFloat(self: *const ConVar) f32 {
-        return self.getParent().float_value;
+        return self.getParentConst().float_value;
     }
 
     pub fn getInt(self: *const ConVar) i32 {
-        return self.getParent().int_value;
+        return self.getParentConst().int_value;
     }
 
     pub fn getBool(self: *const ConVar) bool {
@@ -388,7 +395,7 @@ const ICvar = extern struct {
         findCommand: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(.Thiscall) ?*ConCommand,
 
         getCommandsConst: *const anyopaque,
-        getCommands: *const fn (this: *anyopaque) callconv(.Thiscall) *ConCommandBase,
+        getCommands: *const fn (this: *anyopaque) callconv(.Thiscall) ?*ConCommandBase,
 
         installGlobalChangeCallback: *const anyopaque,
         removeGlobalChangeCallback: *const anyopaque,
@@ -437,6 +444,10 @@ const ICvar = extern struct {
 
     pub fn findCommand(self: *ICvar, name: [*:0]const u8) ?*ConCommand {
         return self.vt().findCommand(self, name);
+    }
+
+    pub fn getCommands(self: *ICvar) ?*ConCommandBase {
+        return self.vt().getCommands(self);
     }
 };
 

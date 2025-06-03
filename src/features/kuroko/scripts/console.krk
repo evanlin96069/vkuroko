@@ -9,3 +9,7 @@ class _Config:
 
 
 let cfg = _Config()
+
+def get_commands():
+  '''@brief Iteration over all cvars'''
+  return CVarIterator()
