@@ -885,6 +885,7 @@ const ConCommand = extern struct {
         if (self.command) |command| {
             if (value.isInt()) {
                 command.base.flags = @bitCast(@as(c_uint, @intCast(value.asInt())));
+                return KrkValue.noneValue();
             } else {
                 return VM.getInstance().exceptions.typeError.runtimeError("set_flags() expects integer, not '%T", .{argv[1].value});
             }
