@@ -130,6 +130,34 @@ pub fn bindAttributes(module: *KrkInstance) void {
     );
     ConCommand.class.finalizeClass();
 
+    module.fields.attachNamedValue("FCVAR_NONE", KrkValue.intValue(0));
+    module.fields.attachNamedValue("FCVAR_UNREGISTERED", KrkValue.intValue(1 << 0));
+    module.fields.attachNamedValue("FCVAR_DEVELOPMENTONLY", KrkValue.intValue(1 << 1));
+    module.fields.attachNamedValue("FCVAR_GAMEDLL", KrkValue.intValue(1 << 2));
+    module.fields.attachNamedValue("FCVAR_CLIENTDLL", KrkValue.intValue(1 << 3));
+    module.fields.attachNamedValue("FCVAR_HIDDEN", KrkValue.intValue(1 << 4));
+    module.fields.attachNamedValue("FCVAR_PROTECTED", KrkValue.intValue(1 << 5));
+    module.fields.attachNamedValue("FCVAR_SPONLY", KrkValue.intValue(1 << 6));
+    module.fields.attachNamedValue("FCVAR_ARCHIVE", KrkValue.intValue(1 << 7));
+    module.fields.attachNamedValue("FCVAR_NOTIFY", KrkValue.intValue(1 << 8));
+    module.fields.attachNamedValue("FCVAR_USERINFO", KrkValue.intValue(1 << 9));
+    module.fields.attachNamedValue("FCVAR_PRINTABLEONLY", KrkValue.intValue(1 << 10));
+    module.fields.attachNamedValue("FCVAR_UNLOGGED", KrkValue.intValue(1 << 11));
+    module.fields.attachNamedValue("FCVAR_NEVER_AS_STRING", KrkValue.intValue(1 << 12));
+    module.fields.attachNamedValue("FCVAR_REPLICATED", KrkValue.intValue(1 << 13));
+    module.fields.attachNamedValue("FCVAR_CHEAT", KrkValue.intValue(1 << 14));
+    module.fields.attachNamedValue("FCVAR_DEMO", KrkValue.intValue(1 << 16));
+    module.fields.attachNamedValue("FCVAR_DONTRECORD", KrkValue.intValue(1 << 17));
+    module.fields.attachNamedValue("FCVAR_RELOAD_MATERIALS", KrkValue.intValue(1 << 20));
+    module.fields.attachNamedValue("FCVAR_RELOAD_TEXTURES", KrkValue.intValue(1 << 21));
+    module.fields.attachNamedValue("FCVAR_NOT_CONNECTED", KrkValue.intValue(1 << 22));
+    module.fields.attachNamedValue("FCVAR_MATERIAL_SYSTEM_THREAD", KrkValue.intValue(1 << 23));
+    module.fields.attachNamedValue("FCVAR_ARCHIVE_XBOX", KrkValue.intValue(1 << 24));
+    module.fields.attachNamedValue("FCVAR_ACCESSIBLE_FROM_THREADS", KrkValue.intValue(1 << 25));
+    module.fields.attachNamedValue("FCVAR_SERVER_CAN_EXECUTE", KrkValue.intValue(1 << 28));
+    module.fields.attachNamedValue("FCVAR_SERVER_CANNOT_QUERY", KrkValue.intValue(1 << 29));
+    module.fields.attachNamedValue("FCVAR_CLIENTCMD_CAN_EXECUTE", KrkValue.intValue(1 << 30));
+
     _ = VM.interpret(@embedFile("scripts/console.krk"), vkrk.module_name);
 }
 

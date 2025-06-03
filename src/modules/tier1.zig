@@ -26,9 +26,18 @@ pub const FCvar = packed struct(c_uint) {
     _pad_0: u1 = 0,
     demo: bool = false,
     dont_record: bool = false,
-    _pad_1: u4 = 0,
+    _pad_1: u2 = 0,
+    reload_materials: bool = false,
+    reload_textures: bool = false,
     not_connected: bool = false,
-    _pad_2: u9 = 0,
+    material_system_thread: bool = false,
+    archive_xbox: bool = false,
+    accessible_from_threads: bool = false,
+    _pad_2: u2 = 0,
+    server_can_execute: bool = false,
+    server_cannot_query: bool = false,
+    clientcmd_can_execute: bool = false,
+    _pad_3: u1 = 0,
 };
 
 pub const ConCommandBase = extern struct {
