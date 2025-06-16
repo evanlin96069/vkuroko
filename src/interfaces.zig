@@ -1,5 +1,5 @@
 const std = @import("std");
-const DynLib = @import("utils/DynLib.zig");
+const builtin = @import("builtin");
 
 const core = @import("core.zig");
 
@@ -14,7 +14,7 @@ const InterfaceInfo = struct {
 };
 
 fn getProcAddress(comptime module_name: []const u8, comptime name: [:0]const u8) !CreateInterfaceFn {
-    var lib = try DynLib.open(module_name);
+    var lib = try std.DynLib.open(module_name);
     defer lib.close();
     return lib.lookup(CreateInterfaceFn, name) orelse return error.SymbolNotFound;
 }

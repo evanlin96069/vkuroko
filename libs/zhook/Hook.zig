@@ -1,7 +1,9 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const x86 = @import("x86.zig");
-const windows = @import("utils.zig").windows;
+const utils = @import("utils.zig");
+const windows = utils.windows;
 
 const loadValue = @import("mem.zig").loadValue;
 
@@ -32,8 +34,7 @@ orig: ?*const anyopaque,
 data: HookData,
 
 pub fn hookVMT(vt: [*]*const anyopaque, index: usize, target: *const anyopaque) !Hook {
-    var old_protect: std.os.windows.DWORD = undefined;
-    try std.os.windows.VirtualProtect(@ptrCast(vt + index), @sizeOf(*anyopaque), std.os.windows.PAGE_READWRITE, &old_protect);
+    try utils.mprotect(@ptrCast(vt + index), @sizeOf(*anyopaque));
 
     const orig: *const anyopaque = vt[index];
     vt[index] = target;
@@ -58,8 +59,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, alloc: std.mem.All
         mem = @ptrFromInt(@intFromPtr(mem) +% offset);
     }
 
-    var old_protect: std.os.windows.DWORD = undefined;
-    try std.os.windows.VirtualProtect(mem, 5, std.os.windows.PAGE_EXECUTE_READWRITE, &old_protect);
+    try utils.mprotect(mem, 5);
 
     var len: usize = 0;
     while (true) {
@@ -81,7 +81,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, alloc: std.mem.All
     }
 
     var trampoline = try alloc.alloc(u8, len + 5);
-    try std.os.windows.VirtualProtect(trampoline.ptr, trampoline.len, std.os.windows.PAGE_EXECUTE_READWRITE, &old_protect);
+    try utils.mprotect(trampoline.ptr, trampoline.len);
 
     @memcpy(trampoline[0..len], mem);
     trampoline[len] = x86.Opcode.Op1.jmpiw;
@@ -92,7 +92,9 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, alloc: std.mem.All
     const jmp2_offset: *align(1) u32 = @ptrCast(mem + 1);
     jmp2_offset.* = @intFromPtr(target) -% (@intFromPtr(mem) +% 5);
 
-    _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), mem, 5);
+    if (builtin.os.tag == .windows) {
+        _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), mem, 5);
+    }
 
     return Hook{
         .orig = trampoline.ptr,
@@ -112,7 +114,9 @@ pub fn unhook(self: *Hook) void {
         },
         .detour => |v| {
             @memcpy(v.func, v.trampoline[0 .. v.trampoline.len - 5]);
-            _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), v.func, 5);
+            if (builtin.os.tag == .windows) {
+                _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), v.func, 5);
+            }
             v.alloc.free(v.trampoline);
         },
     }

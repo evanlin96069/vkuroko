@@ -41,7 +41,7 @@ typedef int64_t krk_integer_type;
 # define KRK_EXPORT_MODULE
 # endif
 #else
-# define KRK_IMPORT
+# define KRK_PUBLIC
 # define KRK_EXPORT_MODULE
 #endif
 

@@ -5,7 +5,7 @@ const kuroko = @import("libs/kuroko/build.zig");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{
         .default_target = std.Target.Query.parse(.{
-            .arch_os_abi = "x86-windows-gnu",
+            .arch_os_abi = "x86-native-gnu",
         }) catch unreachable,
     });
     const optimize = b.standardOptimizeOption(.{});

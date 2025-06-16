@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const windows = @cImport({
     @cDefine("WIN32_LEAN_AND_MEAN", "1");
@@ -32,4 +33,18 @@ pub fn makeHex(comptime str: []const u8) []const u8 {
         }
         break :blk pat;
     };
+}
+
+pub fn mprotect(ptr: *anyopaque, len: usize) !void {
+    if (builtin.os.tag == .windows) {
+        var old_protect: std.os.windows.DWORD = undefined;
+        try std.os.windows.VirtualProtect(ptr, len, std.os.windows.PAGE_EXECUTE_READWRITE, &old_protect);
+    } else {
+        const page_size = std.heap.page_size_min;
+        const aligned_ptr: *align(page_size) anyopaque = @ptrFromInt(@intFromPtr(ptr) & ~(page_size - 1));
+        const aligned_len = len + (page_size - 1) & ~(page_size - 1);
+        if (std.c.mprotect(aligned_ptr, aligned_len, 0b111) != 0) {
+            return error.MProtectError;
+        }
+    }
 }

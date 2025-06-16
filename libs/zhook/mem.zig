@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const testing = std.testing;
 
 const utils = @import("utils.zig");
@@ -199,6 +200,14 @@ test "Load value from memory" {
 }
 
 pub fn getModule(comptime module_name: []const u8) ?[]const u8 {
+    return switch (builtin.os.tag) {
+        .windows => getModuleWindows(module_name),
+        .linux => getModuleLinux(module_name) catch return null,
+        else => @compileError("getModule is not available for this target"),
+    };
+}
+
+fn getModuleWindows(comptime module_name: []const u8) ?[]const u8 {
     const dll_name = module_name ++ ".dll";
     const path_w = std.unicode.utf8ToUtf16LeStringLiteral(dll_name);
     const dll = windows.GetModuleHandleW(path_w) orelse return null;
@@ -208,4 +217,49 @@ pub fn getModule(comptime module_name: []const u8) ?[]const u8 {
     }
     const mem: [*]const u8 = @ptrCast(dll);
     return mem[0..info.SizeOfImage];
+}
+
+fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
+    const allocator = std.heap.page_allocator;
+    var file = try std.fs.openFileAbsolute("/proc/self/maps", .{ .mode = .read_only });
+    defer file.close();
+    var reader = file.reader();
+
+    var base: usize = 0;
+    var end: usize = 0;
+    var first_match = true;
+
+    while (try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', 4096)) |line| {
+        defer allocator.free(line);
+
+        // Example format:
+        // 7f9c84000000-7f9c84200000 r--p 00000000 fd:00 123456 /lib/x86_64-linux-gnu/libc.so.6
+        const pos = std.mem.lastIndexOf(u8, line, module_name) orelse continue;
+        if (pos != 0 and line[pos - 1] != '/' and line[pos - 1] != ' ') continue;
+
+        const dash = std.mem.indexOfScalar(u8, line, '-') orelse continue;
+        const space = std.mem.indexOfScalarPos(u8, line, dash + 1, ' ') orelse continue;
+
+        const start_hex = line[0..dash];
+        const end_hex = line[dash + 1 .. space];
+
+        const start_addr = try std.fmt.parseInt(usize, start_hex, 16);
+        const end_addr = try std.fmt.parseInt(usize, end_hex, 16);
+
+        if (first_match) {
+            base = start_addr;
+            end = end_addr;
+            first_match = false;
+        } else if (start_addr == end) {
+            end = end_addr;
+        } else {
+            break;
+        }
+    }
+
+    if (first_match) return null;
+
+    const size = end - base;
+    const ptr: [*]const u8 = @ptrFromInt(base);
+    return ptr[0..size];
 }

@@ -1,9 +1,34 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const sdk = @import("sdk");
 
 const Module = @import("Module.zig");
-const DynLib = @import("../utils/DynLib.zig");
+
+const lib_name = switch (builtin.os.tag) {
+    .windows => "tier0.dll",
+    .linux => "libtier0.so",
+    .macos => "libtier0.dylib",
+    else => @compileError("Unsupported OS"),
+};
+
+const names = switch (builtin.os.tag) {
+    .windows => .{
+        .msg = "Msg",
+        .warning = "Warning",
+        .colorMsg = "?ConColorMsg@@YAXABVColor@@PBDZZ",
+        .devMsg = "?DevMsg@@YAXPBDZZ",
+        .devWarning = "?DevWarning@@YAXPBDZZ",
+    },
+    .linux, .macos => .{
+        .msg = "Msg",
+        .warning = "Warning",
+        .colorMsg = "_Z11ConColorMsgRK5ColorPKcz",
+        .devMsg = "_Z6DevMsgPKcz",
+        .devWarning = "_Z10DevWarningPKcz",
+    },
+    else => @compileError("Unsupported OS"),
+};
 
 pub var module: Module = .{
     .name = "tier0",
@@ -12,16 +37,8 @@ pub var module: Module = .{
 };
 
 fn init() bool {
-    var lib = DynLib.open("tier0.dll") catch return false;
+    var lib = std.DynLib.open(lib_name) catch return false;
     defer lib.close();
-
-    const names = .{
-        .msg = "Msg",
-        .warning = "Warning",
-        .colorMsg = "?ConColorMsg@@YAXABVColor@@PBDZZ",
-        .devMsg = "?DevMsg@@YAXPBDZZ",
-        .devWarning = "?DevWarning@@YAXPBDZZ",
-    };
 
     inline for (comptime std.meta.fieldNames(@TypeOf(names))) |field| {
         const func = &@field(@This(), field);
