@@ -16,6 +16,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    lib.link_z_notext = true;
 
     lib.linkLibC();
     kuroko.link(b, "libs/kuroko", lib, std.builtin.OptimizeMode.ReleaseFast, target);
@@ -32,5 +33,6 @@ pub fn build(b: *std.Build) void {
 
     lib.root_module.addImport("kuroko", kuroko.module(b, "libs/kuroko"));
 
-    b.installArtifact(lib);
+    const install = b.addInstallArtifact(lib, .{ .dest_sub_path = "vkuroko.so" });
+    b.getInstallStep().dependOn(&install.step);
 }
