@@ -46,7 +46,10 @@ fn init() bool {
         func.* = lib.lookup(@TypeOf(func.*), name) orelse return false;
     }
 
-    memalloc = (lib.lookup(**MemAlloc, "g_pMemAlloc") orelse return false).*;
+    // Linux Source doesn't seem to bother with the custom allocator stuff at all.
+    if (builtin.os.tag == .windows) {
+        memalloc = (lib.lookup(**MemAlloc, "g_pMemAlloc") orelse return false).*;
+    }
 
     ready = true;
 
@@ -95,7 +98,7 @@ const MemAlloc = extern struct {
 };
 
 var allocator_state: Tier0Allocator = .{};
-pub const allocator: std.mem.Allocator = allocator_state.allocator();
+pub const allocator: std.mem.Allocator = if (builtin.os.tag == .windows) allocator_state.allocator() else std.heap.c_allocator;
 
 const Tier0Allocator = struct {
     pub fn allocator(self: *Tier0Allocator) std.mem.Allocator {
