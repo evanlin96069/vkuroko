@@ -12,6 +12,8 @@ const vgui = modules.vgui;
 
 const event = @import("event.zig");
 
+const VCallConv = sdk.VCallConv;
+
 const IServerPluginCallbacks = sdk.IServerPluginCallbacks;
 
 pub const std_options: std.Options = .{
@@ -44,13 +46,13 @@ fn deferLoad() !bool {
 
 const VGuiConnectFunc = *const @TypeOf(hookedVGuiConnect);
 
-fn hookedVGuiConnect(self: *anyopaque) callconv(.Thiscall) void {
+fn hookedVGuiConnect(self: *anyopaque) callconv(VCallConv) void {
     @as(VGuiConnectFunc, @ptrCast(vgui_connect_hook.orig.?))(self);
     _ = core.init();
     vgui_connect_hook.unhook();
 }
 
-fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServerFactory: interfaces.CreateInterfaceFn) callconv(.Thiscall) bool {
+fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServerFactory: interfaces.CreateInterfaceFn) callconv(VCallConv) bool {
     if (plugin_loaded) {
         core.log.err("Plugin already loaded", .{});
         skip_unload = true;
@@ -79,7 +81,7 @@ fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServe
     return true;
 }
 
-fn unload(_: *anyopaque) callconv(.Thiscall) void {
+fn unload(_: *anyopaque) callconv(VCallConv) void {
     if (skip_unload) {
         skip_unload = false;
         return;
@@ -90,15 +92,15 @@ fn unload(_: *anyopaque) callconv(.Thiscall) void {
     plugin_loaded = false;
 }
 
-fn pause(_: *anyopaque) callconv(.Thiscall) void {}
+fn pause(_: *anyopaque) callconv(VCallConv) void {}
 
-fn unpause(_: *anyopaque) callconv(.Thiscall) void {}
+fn unpause(_: *anyopaque) callconv(VCallConv) void {}
 
-fn getPluginDescription(_: *anyopaque) callconv(.Thiscall) [*:0]const u8 {
+fn getPluginDescription(_: *anyopaque) callconv(VCallConv) [*:0]const u8 {
     return "vkuroko - evanlin96069";
 }
 
-fn levelInit(_: *anyopaque, map_name: [*:0]const u8) callconv(.Thiscall) void {
+fn levelInit(_: *anyopaque, map_name: [*:0]const u8) callconv(VCallConv) void {
     _ = map_name;
 }
 
@@ -107,38 +109,38 @@ fn serverActivate(
     edict_list: [*]*anyopaque,
     edict_count: c_int,
     client_max: c_int,
-) callconv(.Thiscall) void {
+) callconv(VCallConv) void {
     _ = edict_list;
     _ = edict_count;
     _ = client_max;
 }
 
-fn gameFrame(_: *anyopaque, simulating: bool) callconv(.Thiscall) void {
+fn gameFrame(_: *anyopaque, simulating: bool) callconv(VCallConv) void {
     if (simulating) {
         event.tick.emit(.{});
     }
 }
 
-fn levelShutdown(_: *anyopaque) callconv(.Thiscall) void {}
+fn levelShutdown(_: *anyopaque) callconv(VCallConv) void {}
 
-fn clientActive(_: *anyopaque, entity: *anyopaque) callconv(.Thiscall) void {
+fn clientActive(_: *anyopaque, entity: *anyopaque) callconv(VCallConv) void {
     _ = entity;
 }
 
-fn clientDisconnect(_: *anyopaque, entity: *anyopaque) callconv(.Thiscall) void {
+fn clientDisconnect(_: *anyopaque, entity: *anyopaque) callconv(VCallConv) void {
     _ = entity;
 }
 
-fn clientPutInServer(_: *anyopaque, entity: *anyopaque, player_name: [*:0]const u8) callconv(.Thiscall) void {
+fn clientPutInServer(_: *anyopaque, entity: *anyopaque, player_name: [*:0]const u8) callconv(VCallConv) void {
     _ = entity;
     _ = player_name;
 }
 
-fn setCommandClient(_: *anyopaque, index: c_int) callconv(.Thiscall) void {
+fn setCommandClient(_: *anyopaque, index: c_int) callconv(VCallConv) void {
     _ = index;
 }
 
-fn clientSettingsChanged(_: *anyopaque, entity: *anyopaque) callconv(.Thiscall) void {
+fn clientSettingsChanged(_: *anyopaque, entity: *anyopaque) callconv(VCallConv) void {
     _ = entity;
 }
 
@@ -150,7 +152,7 @@ fn clientConnect(
     addr: [*:0]const u8,
     reject: [*:0]u8,
     max_reject_len: c_int,
-) callconv(.Thiscall) c_int {
+) callconv(VCallConv) c_int {
     _ = allow;
     _ = entity;
     _ = name;
@@ -160,13 +162,13 @@ fn clientConnect(
     return 0;
 }
 
-fn clientCommand(_: *anyopaque, entity: *anyopaque, args: *const anyopaque) callconv(.Thiscall) c_int {
+fn clientCommand(_: *anyopaque, entity: *anyopaque, args: *const anyopaque) callconv(VCallConv) c_int {
     _ = entity;
     _ = args;
     return 0;
 }
 
-fn networkIdValidated(_: *anyopaque, user_name: [*:0]const u8, network_id: [*:0]const u8) callconv(.Thiscall) c_int {
+fn networkIdValidated(_: *anyopaque, user_name: [*:0]const u8, network_id: [*:0]const u8) callconv(VCallConv) c_int {
     _ = user_name;
     _ = network_id;
     return 0;
@@ -179,7 +181,7 @@ fn onQueryCvarValueFinished(
     status: c_int,
     cvar_name: [*:0]const u8,
     cvar_value: [*:0]const u8,
-) callconv(.Thiscall) void {
+) callconv(VCallConv) void {
     _ = cvar_value;
     _ = cvar_name;
     _ = status;

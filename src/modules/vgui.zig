@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const sdk = @import("sdk");
+
 const interfaces = @import("../interfaces.zig");
 const core = @import("../core.zig");
 const event = @import("../event.zig");
@@ -8,7 +10,8 @@ const zhook = @import("zhook");
 
 const Module = @import("Module.zig");
 
-const Color = @import("sdk").Color;
+const Color = sdk.Color;
+const VCallConv = sdk.VCallConv;
 
 pub var module: Module = .{
     .name = "vgui",
@@ -28,11 +31,11 @@ const IPanel = extern struct {
     var origPaintTraverse: PaintTraverseFunc = undefined;
 
     fn getName(self: *IPanel, panel: u32) [*:0]const u8 {
-        const _setEnabled: *const fn (this: *anyopaque, panel: u32) callconv(.Thiscall) [*:0]const u8 = @ptrCast(self._vt[VTIndex.getName]);
+        const _setEnabled: *const fn (this: *anyopaque, panel: u32) callconv(VCallConv) [*:0]const u8 = @ptrCast(self._vt[VTIndex.getName]);
         return _setEnabled(self, panel);
     }
 
-    fn hookedPaintTraverse(this: *IPanel, vgui_panel: u32, force_repaint: bool, allow_force: bool) callconv(.Thiscall) void {
+    fn hookedPaintTraverse(this: *IPanel, vgui_panel: u32, force_repaint: bool, allow_force: bool) callconv(VCallConv) void {
         const S = struct {
             var panel_id: u32 = 0;
             var found_panel_id: bool = false;
@@ -60,8 +63,8 @@ const IEngineVGui = extern struct {
 
     const VTable = extern struct {
         destruct: *const anyopaque,
-        getPanel: *const fn (this: *anyopaque, panel_type: c_int) callconv(.Thiscall) c_uint,
-        isGameUIVisible: *const fn (this: *anyopaque) callconv(.Thiscall) bool,
+        getPanel: *const fn (this: *anyopaque, panel_type: c_int) callconv(VCallConv) c_uint,
+        isGameUIVisible: *const fn (this: *anyopaque) callconv(VCallConv) bool,
     };
 
     fn vt(self: *IEngineVGui) *const VTable {
@@ -73,7 +76,7 @@ const IEngineVGui = extern struct {
     }
 
     pub fn isInitialized(self: *IEngineVGui) bool {
-        const _isInitialized: *const fn (this: *anyopaque) callconv(.Thiscall) bool = @ptrCast(self._vt[VTIndex.isInitialized]);
+        const _isInitialized: *const fn (this: *anyopaque) callconv(VCallConv) bool = @ptrCast(self._vt[VTIndex.isInitialized]);
         return _isInitialized(self);
     }
 };
@@ -97,42 +100,42 @@ const IMatSystemSurface = extern struct {
     };
 
     pub fn drawSetColor(self: *IMatSystemSurface, color: Color) void {
-        const _drawSetColor: *const fn (this: *anyopaque, color: Color) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawSetColor]);
+        const _drawSetColor: *const fn (this: *anyopaque, color: Color) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetColor]);
         _drawSetColor(self, color);
     }
 
     pub fn drawFilledRect(self: *IMatSystemSurface, x0: i32, y0: i32, x1: i32, y1: i32) void {
-        const _drawFilledRect: *const fn (this: *anyopaque, x0: c_int, y0: c_int, x1: c_int, y1: c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawFilledRect]);
+        const _drawFilledRect: *const fn (this: *anyopaque, x0: c_int, y0: c_int, x1: c_int, y1: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawFilledRect]);
         _drawFilledRect(self, x0, y0, x1, y1);
     }
 
     pub fn drawOutlinedRect(self: *IMatSystemSurface, x0: i32, y0: i32, x1: i32, y1: i32) void {
-        const _drawOutlinedRect: *const fn (this: *anyopaque, x0: c_int, y0: c_int, x1: c_int, y1: c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawOutlinedRect]);
+        const _drawOutlinedRect: *const fn (this: *anyopaque, x0: c_int, y0: c_int, x1: c_int, y1: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawOutlinedRect]);
         _drawOutlinedRect(self, x0, y0, x1, y1);
     }
 
     pub fn drawLine(self: *IMatSystemSurface, x0: i32, y0: i32, x1: i32, y1: i32) void {
-        const _drawLine: *const fn (this: *anyopaque, x0: c_int, y0: c_int, x1: c_int, y1: c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawLine]);
+        const _drawLine: *const fn (this: *anyopaque, x0: c_int, y0: c_int, x1: c_int, y1: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawLine]);
         _drawLine(self, x0, y0, x1, y1);
     }
 
     pub fn drawSetTextFont(self: *IMatSystemSurface, font: c_ulong) void {
-        const _drawSetTextFont: *const fn (this: *anyopaque, font: c_ulong) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawSetTextFont]);
+        const _drawSetTextFont: *const fn (this: *anyopaque, font: c_ulong) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetTextFont]);
         _drawSetTextFont(self, font);
     }
 
     pub fn drawSetTextColor(self: *IMatSystemSurface, color: Color) void {
-        const _drawSetTextColor: *const fn (this: *anyopaque, color: Color) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawSetTextColor]);
+        const _drawSetTextColor: *const fn (this: *anyopaque, color: Color) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetTextColor]);
         _drawSetTextColor(self, color);
     }
 
     pub fn drawSetTextPos(self: *IMatSystemSurface, x: i32, y: i32) void {
-        const _drawSetTextPos: *const fn (this: *anyopaque, x: c_int, y: c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawSetTextPos]);
+        const _drawSetTextPos: *const fn (this: *anyopaque, x: c_int, y: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetTextPos]);
         _drawSetTextPos(self, x, y);
     }
 
     pub fn drawPrintText(self: *IMatSystemSurface, comptime fmt: []const u8, args: anytype) void {
-        const _drawPrintText: *const fn (this: *anyopaque, text: [*]u16, text_len: c_int, draw_type: c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawPrintText]);
+        const _drawPrintText: *const fn (this: *anyopaque, text: [*]u16, text_len: c_int, draw_type: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawPrintText]);
 
         const text = std.fmt.allocPrint(core.allocator, fmt, args) catch {
             return;
@@ -151,7 +154,7 @@ const IMatSystemSurface = extern struct {
         var wide: c_int = undefined;
         var tall: c_int = undefined;
 
-        const _getScreenSize: *const fn (this: *anyopaque, wide: *c_int, tall: *c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.getScreenSize]);
+        const _getScreenSize: *const fn (this: *anyopaque, wide: *c_int, tall: *c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.getScreenSize]);
         _getScreenSize(self, &wide, &tall);
 
         return .{
@@ -161,12 +164,12 @@ const IMatSystemSurface = extern struct {
     }
 
     pub fn getFontTall(self: *IMatSystemSurface, font: c_ulong) c_int {
-        const _getFontTall: *const fn (this: *anyopaque, font: c_ulong) callconv(.Thiscall) c_int = @ptrCast(self._vt[VTIndex.getFontTall]);
+        const _getFontTall: *const fn (this: *anyopaque, font: c_ulong) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.getFontTall]);
         return _getFontTall(self, font);
     }
 
     pub fn drawOutlinedCircle(self: *IMatSystemSurface, x: i32, y: i32, radius: i32, segments: i32) void {
-        const _drawOutlinedCircle: *const fn (this: *anyopaque, x: c_int, y: c_int, radius: c_int, segments: c_int) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.drawOutlinedCircle]);
+        const _drawOutlinedCircle: *const fn (this: *anyopaque, x: c_int, y: c_int, radius: c_int, segments: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawOutlinedCircle]);
         _drawOutlinedCircle(self, x, y, radius, segments);
     }
 };
@@ -180,12 +183,12 @@ const ISchemeManager = extern struct {
     };
 
     fn getDefaultScheme(self: *ISchemeManager) c_ulong {
-        const _getDefaultScheme: *const fn (this: *anyopaque) callconv(.Thiscall) c_ulong = @ptrCast(self._vt[VTIndex.getDefaultScheme]);
+        const _getDefaultScheme: *const fn (this: *anyopaque) callconv(VCallConv) c_ulong = @ptrCast(self._vt[VTIndex.getDefaultScheme]);
         return _getDefaultScheme(self);
     }
 
     fn getIScheme(self: *ISchemeManager, font: c_ulong) ?*IScheme {
-        const _getIScheme: *const fn (this: *anyopaque, font: c_ulong) callconv(.Thiscall) ?*IScheme = @ptrCast(self._vt[VTIndex.getIScheme]);
+        const _getIScheme: *const fn (this: *anyopaque, font: c_ulong) callconv(VCallConv) ?*IScheme = @ptrCast(self._vt[VTIndex.getIScheme]);
         return _getIScheme(self, font);
     }
 };
@@ -198,12 +201,12 @@ const IScheme = extern struct {
     };
 
     pub fn getFont(self: *IScheme, name: [*:0]const u8, proportional: bool) c_ulong {
-        const _getFont: *const fn (this: *anyopaque, name: [*:0]const u8, proportional: bool) callconv(.Thiscall) c_ulong = @ptrCast(self._vt[VTIndex.getFont]);
+        const _getFont: *const fn (this: *anyopaque, name: [*:0]const u8, proportional: bool) callconv(VCallConv) c_ulong = @ptrCast(self._vt[VTIndex.getFont]);
         return _getFont(self, name, proportional);
     }
 };
 
-fn hookedCFPSPanelShouldDraw(this: *anyopaque) callconv(.Thiscall) bool {
+fn hookedCFPSPanelShouldDraw(this: *anyopaque) callconv(VCallConv) bool {
     _ = this;
     return false;
 }

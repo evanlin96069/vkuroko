@@ -17,6 +17,7 @@ const QAngle = sdk.QAngle;
 const Ray = sdk.Ray;
 const Trace = sdk.Trace;
 const ITraceFilter = sdk.ITraceFilter;
+const VCallConv = sdk.VCallConv;
 
 const zhook = @import("zhook");
 
@@ -76,12 +77,12 @@ const IVEngineServer = extern struct {
     };
 
     pub fn getEntityCount(self: *IVEngineServer) c_int {
-        const _getEntityCount: *const fn (this: *anyopaque) callconv(.Thiscall) c_int = @ptrCast(self._vt[VTIndex.getEntityCount]);
+        const _getEntityCount: *const fn (this: *anyopaque) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.getEntityCount]);
         return _getEntityCount(self);
     }
 
     pub fn pEntityOfEntIndex(self: *IVEngineServer, index: c_int) ?*Edict {
-        const _pEntityOfEntIndex: *const fn (this: *anyopaque, index: c_int) callconv(.Thiscall) ?*Edict = @ptrCast(self._vt[VTIndex.pEntityOfEntIndex]);
+        const _pEntityOfEntIndex: *const fn (this: *anyopaque, index: c_int) callconv(VCallConv) ?*Edict = @ptrCast(self._vt[VTIndex.pEntityOfEntIndex]);
         return _pEntityOfEntIndex(self, index);
     }
 };
@@ -99,34 +100,34 @@ const IVEngineClient = extern struct {
     };
 
     pub fn clientCmd(self: *IVEngineClient, command: [*:0]const u8) void {
-        const _clientCmd: *const fn (this: *anyopaque, command: [*:0]const u8) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.clientCmd]);
+        const _clientCmd: *const fn (this: *anyopaque, command: [*:0]const u8) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.clientCmd]);
         _clientCmd(self, command);
     }
 
     pub fn isInGame(self: *IVEngineClient) bool {
-        const _isInGame: *const fn (this: *anyopaque) callconv(.Thiscall) bool = @ptrCast(self._vt[VTIndex.isInGame]);
+        const _isInGame: *const fn (this: *anyopaque) callconv(VCallConv) bool = @ptrCast(self._vt[VTIndex.isInGame]);
         return _isInGame(self);
     }
 
     pub fn getViewAngles(self: *IVEngineClient) QAngle {
         var va: QAngle = undefined;
-        const _getViewAngles: *const fn (this: *anyopaque, va: *QAngle) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.getViewAngles]);
+        const _getViewAngles: *const fn (this: *anyopaque, va: *QAngle) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.getViewAngles]);
         _getViewAngles(self, &va);
         return va;
     }
 
     pub fn setViewAngles(self: *IVEngineClient, va: QAngle) void {
-        const _setViewAngles: *const fn (this: *anyopaque, va: *QAngle) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.setViewAngles]);
+        const _setViewAngles: *const fn (this: *anyopaque, va: *QAngle) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.setViewAngles]);
         _setViewAngles(self, &va);
     }
 
     pub fn getGameDirectory(self: *IVEngineClient) [*:0]const u8 {
-        const _getGameDirectory: *const fn (this: *anyopaque) callconv(.Thiscall) [*:0]const u8 = @ptrCast(self._vt[VTIndex.getGameDirectory]);
+        const _getGameDirectory: *const fn (this: *anyopaque) callconv(VCallConv) [*:0]const u8 = @ptrCast(self._vt[VTIndex.getGameDirectory]);
         return _getGameDirectory(self);
     }
 
     pub fn getLevelName(self: *IVEngineClient) [*:0]const u8 {
-        const _getLevelName: *const fn (this: *anyopaque) callconv(.Thiscall) [*:0]const u8 = @ptrCast(self._vt[VTIndex.getLevelName]);
+        const _getLevelName: *const fn (this: *anyopaque) callconv(VCallConv) [*:0]const u8 = @ptrCast(self._vt[VTIndex.getLevelName]);
         return _getLevelName(self);
     }
 
@@ -148,7 +149,7 @@ const IEngineTool = extern struct {
     };
 
     pub fn hostFrameTime(self: *IEngineTool) c_int {
-        const _hostFrameTime: *const fn (this: *anyopaque) callconv(.Thiscall) c_int = @ptrCast(self._vt[VTIndex.hostFrameTime]);
+        const _hostFrameTime: *const fn (this: *anyopaque) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.hostFrameTime]);
         return _hostFrameTime(self);
     }
 };
@@ -162,12 +163,12 @@ const IEngineTrace = extern struct {
     };
 
     pub fn traceRay(self: *IEngineTrace, ray: *const Ray, mask: c_uint, filter: ?*ITraceFilter, trace: *Trace) void {
-        const _traceRay: *const fn (this: *anyopaque, ray: *const Ray, mask: c_uint, filter: ?*ITraceFilter, trace: *Trace) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.traceRay]);
+        const _traceRay: *const fn (this: *anyopaque, ray: *const Ray, mask: c_uint, filter: ?*ITraceFilter, trace: *Trace) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.traceRay]);
         _traceRay(self, ray, mask, filter, trace);
     }
 
     pub fn pointOutsideWorld(self: *IEngineTrace, pt_test: Vector) bool {
-        const _pointOutsideWorld: *const fn (this: *anyopaque, pt_test: *const Vector) callconv(.Thiscall) bool = @ptrCast(self._vt[VTIndex.pointOutsideWorld]);
+        const _pointOutsideWorld: *const fn (this: *anyopaque, pt_test: *const Vector) callconv(VCallConv) bool = @ptrCast(self._vt[VTIndex.pointOutsideWorld]);
         return _pointOutsideWorld(self, &pt_test);
     }
 };

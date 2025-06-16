@@ -6,6 +6,7 @@ const sdk = @import("sdk");
 const Vector = sdk.Vector;
 const Trace = sdk.Trace;
 const CMoveData = sdk.CMoveData;
+const VCallConv = sdk.VCallConv;
 
 const core = @import("../core.zig");
 const game_detection = @import("../utils/game_detection.zig");
@@ -40,20 +41,20 @@ const CGameMovement = extern struct {
     var _mins: *const Vector = undefined;
     var _maxs: *const Vector = undefined;
 
-    const GetPlayerMinsMaxsFuncV1 = *const fn (this: *const CGameMovement) callconv(.Thiscall) *const Vector;
-    const GetPlayerMinsMaxsFuncV2 = *const fn (this: *const CGameMovement, out: *Vector) callconv(.Thiscall) void;
+    const GetPlayerMinsMaxsFuncV1 = *const fn (this: *const CGameMovement) callconv(VCallConv) *const Vector;
+    const GetPlayerMinsMaxsFuncV2 = *const fn (this: *const CGameMovement, out: *Vector) callconv(VCallConv) void;
 
     var origGetPlayerMinsV1: ?GetPlayerMinsMaxsFuncV1 = undefined;
     var origGetPlayerMinsV2: ?GetPlayerMinsMaxsFuncV2 = undefined;
 
-    fn hookedGetPlayerMinsV1(this: *const CGameMovement) callconv(.Thiscall) *const Vector {
+    fn hookedGetPlayerMinsV1(this: *const CGameMovement) callconv(VCallConv) *const Vector {
         if (override_minmax) {
             return _mins;
         }
         return origGetPlayerMinsV1.?(this);
     }
 
-    fn hookedGetPlayerMinsV2(this: *const CGameMovement, out: *Vector) callconv(.Thiscall) void {
+    fn hookedGetPlayerMinsV2(this: *const CGameMovement, out: *Vector) callconv(VCallConv) void {
         @setRuntimeSafety(false);
 
         if (override_minmax) {
@@ -66,14 +67,14 @@ const CGameMovement = extern struct {
     var origGetPlayerMaxsV1: ?GetPlayerMinsMaxsFuncV1 = undefined;
     var origGetPlayerMaxsV2: ?GetPlayerMinsMaxsFuncV2 = undefined;
 
-    fn hookedGetPlayerMaxsV1(this: *const CGameMovement) callconv(.Thiscall) *const Vector {
+    fn hookedGetPlayerMaxsV1(this: *const CGameMovement) callconv(VCallConv) *const Vector {
         if (override_minmax) {
             return _maxs;
         }
         return origGetPlayerMaxsV1.?(this);
     }
 
-    fn hookedGetPlayerMaxsV2(this: *const CGameMovement, out: *Vector) callconv(.Thiscall) void {
+    fn hookedGetPlayerMaxsV2(this: *const CGameMovement, out: *Vector) callconv(VCallConv) void {
         @setRuntimeSafety(false);
 
         if (override_minmax) {
@@ -129,7 +130,7 @@ const CGameMovement = extern struct {
             mask: c_uint,
             collision_group: c_int,
             pm: *Trace,
-        ) callconv(.Thiscall) void = @ptrCast(self._vt[VTIndex.tracePlayerBBox]);
+        ) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.tracePlayerBBox]);
         _tracePlayerBBox(
             self,
             start,
@@ -160,7 +161,7 @@ const CGameMovement = extern struct {
         mask: c_uint,
         collision_group: c_int,
         pm: *Trace,
-    ) callconv(.Thiscall) void;
+    ) callconv(VCallConv) void;
 
     var origTracePlayerBBoxForGroundV1: ?TracePlayerBBoxForGroundV1Func = null;
     var origTracePlayerBBoxForGroundV2: ?TracePlayerBBoxForGroundV2Func = null;

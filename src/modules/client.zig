@@ -12,6 +12,7 @@ const sdk = @import("sdk");
 const Vector = sdk.Vector;
 const QAngle = sdk.QAngle;
 const CUserCmd = sdk.CUserCmd;
+const VCallConv = sdk.VCallConv;
 
 pub var module: Module = .{
     .name = "client",
@@ -28,12 +29,12 @@ const IClientEntityList = extern struct {
     };
 
     pub fn getClientEntity(self: *IClientEntityList, index: c_int) ?*sdk.IClientEntity {
-        const _getClientEntity: *const fn (this: *anyopaque, index: c_int) callconv(.Thiscall) ?*sdk.IClientEntity = @ptrCast(self._vt[VTIndex.getClientEntity]);
+        const _getClientEntity: *const fn (this: *anyopaque, index: c_int) callconv(VCallConv) ?*sdk.IClientEntity = @ptrCast(self._vt[VTIndex.getClientEntity]);
         return _getClientEntity(self, index);
     }
 
     pub fn getHighestEntityIndex(self: *IClientEntityList) c_int {
-        const _getHighestEntityIndex: *const fn (this: *anyopaque) callconv(.Thiscall) c_int = @ptrCast(self._vt[VTIndex.getHighestEntityIndex]);
+        const _getHighestEntityIndex: *const fn (this: *anyopaque) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.getHighestEntityIndex]);
         return _getHighestEntityIndex(self);
     }
 };
@@ -71,7 +72,7 @@ const IInput = extern struct {
     const CreateMoveFunc = *const @TypeOf(hookedCreateMove);
     var origCreateMove: CreateMoveFunc = undefined;
 
-    fn hookedCreateMove(self: *IInput, sequence_number: c_int, input_sample_frametime: f32, active: bool) callconv(.Thiscall) void {
+    fn hookedCreateMove(self: *IInput, sequence_number: c_int, input_sample_frametime: f32, active: bool) callconv(VCallConv) void {
         origCreateMove(self, sequence_number, input_sample_frametime, active);
         event.create_move.emit(.{ true, self.getUserCmd(sequence_number) });
     }
@@ -79,13 +80,13 @@ const IInput = extern struct {
     const DecodeUserCmdFromBufferFunc = *const @TypeOf(hookedDecodeUserCmdFromBuffer);
     var origDecodeUserCmdFromBuffer: DecodeUserCmdFromBufferFunc = undefined;
 
-    fn hookedDecodeUserCmdFromBuffer(self: *IInput, buf: *anyopaque, sequence_number: c_int) callconv(.Thiscall) void {
+    fn hookedDecodeUserCmdFromBuffer(self: *IInput, buf: *anyopaque, sequence_number: c_int) callconv(VCallConv) void {
         origDecodeUserCmdFromBuffer(self, buf, sequence_number);
         event.create_move.emit(.{ false, self.getUserCmd(sequence_number) });
     }
 
-    fn getUserCmd(self: *IInput, sequence_number: c_int) callconv(.Thiscall) *CUserCmd {
-        const _getUserCmd: *const fn (this: *anyopaque, sequence_number: c_int) callconv(.Thiscall) *CUserCmd = @ptrCast(self._vt[VTIndex.getUserCmd]);
+    fn getUserCmd(self: *IInput, sequence_number: c_int) callconv(VCallConv) *CUserCmd {
+        const _getUserCmd: *const fn (this: *anyopaque, sequence_number: c_int) callconv(VCallConv) *CUserCmd = @ptrCast(self._vt[VTIndex.getUserCmd]);
         return _getUserCmd(self, sequence_number);
     }
 };

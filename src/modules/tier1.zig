@@ -1,9 +1,13 @@
 const std = @import("std");
 
+const sdk = @import("sdk");
+
 const interfaces = @import("../interfaces.zig");
 const tier0 = @import("tier0.zig");
 const core = @import("../core.zig");
 const FileCompletion = @import("../utils/completion.zig").FileCompletion;
+
+const VCallConv = sdk.VCallConv;
 
 const Module = @import("Module.zig");
 
@@ -50,19 +54,19 @@ pub const ConCommandBase = extern struct {
 
     const VTable = extern struct {
         destruct: *const anyopaque,
-        isCommand: *const fn (this: *const anyopaque) callconv(.Thiscall) bool,
+        isCommand: *const fn (this: *const anyopaque) callconv(VCallConv) bool,
         isFlagSet: *const anyopaque,
         addFlags: *const anyopaque,
         getName: *const anyopaque,
         getHelpText: *const anyopaque,
         isRegistered: *const anyopaque,
-        getDLLIdentifier: *const fn (this: *anyopaque) callconv(.Thiscall) c_int,
+        getDLLIdentifier: *const fn (this: *anyopaque) callconv(VCallConv) c_int,
 
         create: *const anyopaque,
         init: *const anyopaque,
     };
 
-    fn getDLLIdentifier(this: *anyopaque) callconv(.Thiscall) c_int {
+    fn getDLLIdentifier(this: *anyopaque) callconv(VCallConv) c_int {
         _ = this;
         return ICvar.dll_identifier;
     }
@@ -126,7 +130,7 @@ pub const ConCommand = extern struct {
         base: ConCommandBase.VTable,
         autoCompleteSuggest: *const anyopaque,
         canAutoComplete: *const anyopaque,
-        dispatch: *const fn (this: *anyopaque, command: *const CCommand) callconv(.Thiscall) void,
+        dispatch: *const fn (this: *anyopaque, command: *const CCommand) callconv(VCallConv) void,
     };
 
     fn vt(self: *const ConCommand) *const VTable {
@@ -166,9 +170,9 @@ pub const IConVar = extern struct {
     var vtable: VTable = undefined;
 
     const VTable = extern struct {
-        setInt: *const fn (this: *anyopaque, value: c_int) callconv(.Thiscall) void,
-        setFloat: *const fn (this: *anyopaque, value: f32) callconv(.Thiscall) void,
-        setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(.Thiscall) void,
+        setInt: *const fn (this: *anyopaque, value: c_int) callconv(VCallConv) void,
+        setFloat: *const fn (this: *anyopaque, value: f32) callconv(VCallConv) void,
+        setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(VCallConv) void,
         getName: *const anyopaque,
         isFlagSet: *const anyopaque,
     };
@@ -231,7 +235,7 @@ pub const ConVar = extern struct {
             has_max: bool,
             max_value: f32,
             callback: ?ChangeCallbackFn,
-        ) callconv(.Thiscall) void,
+        ) callconv(VCallConv) void,
     };
 
     pub fn init(cvar: Data) ConVar {
@@ -388,23 +392,23 @@ const ICvar = extern struct {
     const VTable = extern struct {
         base: interfaces.IAppSystem.VTable,
 
-        allocateDLLIDentifier: *const fn (this: *anyopaque) callconv(.Thiscall) c_int,
+        allocateDLLIDentifier: *const fn (this: *anyopaque) callconv(VCallConv) c_int,
 
-        registerConCommandBase: *const fn (this: *anyopaque, cmd: *ConCommandBase) callconv(.Thiscall) void,
-        unregisterConCommand: *const fn (this: *anyopaque, cmd: *ConCommandBase) callconv(.Thiscall) void,
-        unregisterConCommands: *const fn (this: *anyopaque, id: c_int) callconv(.Thiscall) void,
+        registerConCommandBase: *const fn (this: *anyopaque, cmd: *ConCommandBase) callconv(VCallConv) void,
+        unregisterConCommand: *const fn (this: *anyopaque, cmd: *ConCommandBase) callconv(VCallConv) void,
+        unregisterConCommands: *const fn (this: *anyopaque, id: c_int) callconv(VCallConv) void,
 
         getCommandLineValue: *const anyopaque,
 
         findCommandBaseConst: *const anyopaque,
-        findCommandBase: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(.Thiscall) ?*ConCommandBase,
+        findCommandBase: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(VCallConv) ?*ConCommandBase,
         findVarConst: *const anyopaque,
-        findVar: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(.Thiscall) ?*ConVar,
+        findVar: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(VCallConv) ?*ConVar,
         findCommandConst: *const anyopaque,
-        findCommand: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(.Thiscall) ?*ConCommand,
+        findCommand: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(VCallConv) ?*ConCommand,
 
         getCommandsConst: *const anyopaque,
-        getCommands: *const fn (this: *anyopaque) callconv(.Thiscall) ?*ConCommandBase,
+        getCommands: *const fn (this: *anyopaque) callconv(VCallConv) ?*ConCommandBase,
 
         installGlobalChangeCallback: *const anyopaque,
         removeGlobalChangeCallback: *const anyopaque,
