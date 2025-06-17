@@ -2,6 +2,8 @@ const std = @import("std");
 
 const Feature = @import("Feature.zig");
 
+const core = @import("../core.zig");
+
 const datamap = @import("datamap.zig");
 const texthud = @import("texthud.zig");
 
@@ -316,28 +318,28 @@ fn init() bool {
         const m_vecPreviouslyPredictedOrigin = map.get("CBasePlayer::m_vecPreviouslyPredictedOrigin");
         const m_nWaterLevel = map.get("CBaseEntity::m_nWaterLevel");
         if (m_vecAbsOrigin == null) {
-            std.log.debug("Cannot find CBaseEntity::m_vecAbsOrigin offset", .{});
+            core.log.debug("Cannot find CBaseEntity::m_vecAbsOrigin offset", .{});
         }
         if (m_vecAbsVelocity == null) {
-            std.log.debug("Cannot find CBaseEntity::m_vecAbsVelocity offset", .{});
+            core.log.debug("Cannot find CBaseEntity::m_vecAbsVelocity offset", .{});
         }
         if (m_flMaxspeed == null) {
-            std.log.debug("Cannot find CBasePlayer::m_flMaxspeed offset", .{});
+            core.log.debug("Cannot find CBasePlayer::m_flMaxspeed offset", .{});
         }
         if (m_bDucked == null) {
-            std.log.debug("Cannot find CBasePlayer::m_Local.CPlayerLocalData::m_bDucked offset", .{});
+            core.log.debug("Cannot find CBasePlayer::m_Local.CPlayerLocalData::m_bDucked offset", .{});
         }
         if (m_hGroundEntity == null) {
-            std.log.debug("Cannot find CBaseEntity::m_hGroundEntity offset", .{});
+            core.log.debug("Cannot find CBaseEntity::m_hGroundEntity offset", .{});
         }
         if (m_bSinglePlayerGameEnding == null) {
-            std.log.debug("Cannot find CBasePlayer::m_bSinglePlayerGameEnding offset", .{});
+            core.log.debug("Cannot find CBasePlayer::m_bSinglePlayerGameEnding offset", .{});
         }
         if (m_vecPreviouslyPredictedOrigin == null) {
-            std.log.debug("Cannot find CBasePlayer::m_vecPreviouslyPredictedOrigin offset", .{});
+            core.log.debug("Cannot find CBasePlayer::m_vecPreviouslyPredictedOrigin offset", .{});
         }
         if (m_nWaterLevel == null) {
-            std.log.debug("Cannot find CBaseEntity::m_nWaterLevel offset", .{});
+            core.log.debug("Cannot find CBaseEntity::m_nWaterLevel offset", .{});
         }
 
         if (m_vecAbsOrigin == null or
@@ -361,7 +363,7 @@ fn init() bool {
         server_player_field.m_vecPreviouslyPredictedOrigin = m_vecPreviouslyPredictedOrigin.?;
         server_player_field.m_nWaterLevel = m_nWaterLevel.?;
     } else {
-        std.log.debug("Cannot find CBasePlayer datamap", .{});
+        core.log.debug("Cannot find CBasePlayer datamap", .{});
         return false;
     }
 
@@ -374,25 +376,25 @@ fn init() bool {
         const m_surfaceFriction = map.get("C_BasePlayer::m_surfaceFriction");
         const m_nWaterLevel = map.get("C_BasePlayer::m_nWaterLevel");
         if (m_vecAbsOrigin == null) {
-            std.log.debug("Cannot find C_BaseEntity::m_vecAbsOrigin offset", .{});
+            core.log.debug("Cannot find C_BaseEntity::m_vecAbsOrigin offset", .{});
         }
         if (m_vecAbsVelocity == null) {
-            std.log.debug("Cannot find C_BaseEntity::m_vecAbsVelocity offset", .{});
+            core.log.debug("Cannot find C_BaseEntity::m_vecAbsVelocity offset", .{});
         }
         if (m_flMaxspeed == null) {
-            std.log.debug("Cannot find C_BasePlayer::m_flMaxspeed offset", .{});
+            core.log.debug("Cannot find C_BasePlayer::m_flMaxspeed offset", .{});
         }
         if (m_bDucked == null) {
-            std.log.debug("Cannot find C_BasePlayer::m_Local.CPlayerLocalData::m_bDucked offset", .{});
+            core.log.debug("Cannot find C_BasePlayer::m_Local.CPlayerLocalData::m_bDucked offset", .{});
         }
         if (m_hGroundEntity == null) {
-            std.log.debug("Cannot find C_BasePlayer::m_hGroundEntity offset", .{});
+            core.log.debug("Cannot find C_BasePlayer::m_hGroundEntity offset", .{});
         }
         if (m_surfaceFriction == null) {
-            std.log.debug("Cannot find C_BasePlayer::m_surfaceFriction offset", .{});
+            core.log.debug("Cannot find C_BasePlayer::m_surfaceFriction offset", .{});
         }
         if (m_nWaterLevel == null) {
-            std.log.debug("Cannot find C_BasePlayer::m_nWaterLevel offset", .{});
+            core.log.debug("Cannot find C_BasePlayer::m_nWaterLevel offset", .{});
         }
 
         if (m_vecAbsOrigin == null or
@@ -414,7 +416,7 @@ fn init() bool {
         client_player_field.m_surfaceFriction = m_surfaceFriction.?;
         client_player_field.m_nWaterLevel = m_nWaterLevel.?;
     } else {
-        std.log.debug("Cannot find C_BasePlayer datamap", .{});
+        core.log.debug("Cannot find C_BasePlayer datamap", .{});
         return false;
     }
 
