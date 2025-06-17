@@ -5,11 +5,11 @@ const kuroko = @import("libs/kuroko/build.zig");
 const Target = enum { linux, windows };
 
 pub fn build(b: *std.Build) void {
-    const target_option: Target = b.option(Target, "target", "The target to build vkuroko for; default 'windows'") orelse .windows;
-    const target_query: std.Target.Query = std.Build.parseTargetQuery(switch (target_option) {
+    const target_option: ?Target = b.option(Target, "target", "The target to build vkuroko for");
+    const target_query: std.Target.Query = std.Build.parseTargetQuery(if (target_option) |option| switch (option) {
         .linux => .{ .arch_os_abi = "x86-linux-gnu" },
         .windows => .{ .arch_os_abi = "x86-windows-gnu" },
-    }) catch unreachable;
+    } else .{ .arch_os_abi = "x86-native-gnu" }) catch unreachable;
     const target = b.resolveTargetQuery(target_query);
     const optimize = b.standardOptimizeOption(.{});
 
