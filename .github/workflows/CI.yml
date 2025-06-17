@@ -8,9 +8,9 @@ on:
       - 'README.md'
 
 jobs:
-  build:
+  build-windows:
     runs-on: ubuntu-latest
-    name: Build
+    name: Windows Build
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
@@ -19,11 +19,27 @@ jobs:
       - name: Check Format
         run: zig fmt --check .
       - name: Build
-        run: zig build -Doptimize=ReleaseFast
+        run: zig build -Doptimize=ReleaseFast -Dtarget=windows
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vkuroko
+          name: vkuroko-windows
           path: |
             zig-out/bin/vkuroko.dll
             zig-out/bin/vkuroko.pdb
+
+  build-linux:
+    runs-on: ubuntu-latest
+    name: Linux Build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.1
+      - name: Build
+        run: zig build -Doptimize=ReleaseFast -Dtarget=linux
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vkuroko-linux
+          path: zig-out/lib/vkuroko.so

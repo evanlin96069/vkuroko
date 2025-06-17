@@ -2,12 +2,15 @@ const std = @import("std");
 
 const kuroko = @import("libs/kuroko/build.zig");
 
+const Target = enum { linux, windows };
+
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{
-        .default_target = std.Target.Query.parse(.{
-            .arch_os_abi = "x86-native-gnu",
-        }) catch unreachable,
-    });
+    const target_option: Target = b.option(Target, "target", "The target to build vkuroko for; default 'windows'") orelse .windows;
+    const target_query: std.Target.Query = std.Build.parseTargetQuery(switch (target_option) {
+        .linux => .{ .arch_os_abi = "x86-linux-gnu" },
+        .windows => .{ .arch_os_abi = "x86-windows-gnu" },
+    }) catch unreachable;
+    const target = b.resolveTargetQuery(target_query);
     const optimize = b.standardOptimizeOption(.{});
 
     const lib = b.addSharedLibrary(.{
@@ -33,6 +36,10 @@ pub fn build(b: *std.Build) void {
 
     lib.root_module.addImport("kuroko", kuroko.module(b, "libs/kuroko"));
 
-    const install = b.addInstallArtifact(lib, .{ .dest_sub_path = "vkuroko.so" });
-    b.getInstallStep().dependOn(&install.step);
+    if (target_option == .windows) {
+        b.installArtifact(lib);
+    } else {
+        const install = b.addInstallArtifact(lib, .{ .dest_sub_path = "vkuroko.so" });
+        b.getInstallStep().dependOn(&install.step);
+    }
 }
