@@ -1,10 +1,8 @@
 const std = @import("std");
-const builtin = @import("builtin");
 
-pub const VCallConv = switch (@import("builtin").os.tag) {
-    .windows => std.builtin.CallingConventionVCallConv,
-    else => std.builtin.CallingConvention.C,
-};
+pub const abi = @import("abi.zig");
+
+const VCallConv = abi.VCallConv;
 
 pub fn CUtlMemory(T: anytype) type {
     return extern struct {
@@ -85,7 +83,7 @@ pub const IClientEntity = extern struct {
     _vt_IClientThinkable: [*]*const anyopaque,
 
     const VTIndexIClientUnknown = struct {
-        const getRefEHandle = 2;
+        const getRefEHandle = 2 + abi.dtor_adjust;
     };
 
     const VTIndexIClientNetworkable = struct {
@@ -118,7 +116,7 @@ pub const IServerEntity = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const getRefEHandle = 2;
+        const getRefEHandle = 2 + abi.dtor_adjust;
     };
 
     pub fn getRefEHandle(self: *const IServerEntity) *const CBaseHandle {

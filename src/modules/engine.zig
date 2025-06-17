@@ -11,13 +11,14 @@ const tier1 = @import("tier1.zig");
 const main = @import("../main.zig");
 
 const sdk = @import("sdk");
+const abi = sdk.abi;
 const Edict = sdk.Edict;
 const Vector = sdk.Vector;
 const QAngle = sdk.QAngle;
 const Ray = sdk.Ray;
 const Trace = sdk.Trace;
 const ITraceFilter = sdk.ITraceFilter;
-const VCallConv = sdk.VCallConv;
+const VCallConv = abi.VCallConv;
 
 const zhook = @import("zhook");
 
@@ -145,7 +146,7 @@ const IEngineTool = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const hostFrameTime = 40;
+        const hostFrameTime = 40 + abi.dtor_adjust;
     };
 
     pub fn hostFrameTime(self: *IEngineTool) c_int {

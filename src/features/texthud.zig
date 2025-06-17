@@ -218,7 +218,9 @@ fn init() bool {
     vkrk_hud_x.register();
     vkrk_hud_y.register();
 
-    FPSTextHUD.register();
+    if (vgui.origCFPSPanelShouldDraw != null) {
+        FPSTextHUD.register();
+    }
 
     return true;
 }

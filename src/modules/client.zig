@@ -12,7 +12,7 @@ const sdk = @import("sdk");
 const Vector = sdk.Vector;
 const QAngle = sdk.QAngle;
 const CUserCmd = sdk.CUserCmd;
-const VCallConv = sdk.VCallConv;
+const VCallConv = sdk.abi.VCallConv;
 
 pub var module: Module = .{
     .name = "client",
@@ -93,7 +93,7 @@ const IInput = extern struct {
 
 pub var entlist: *IClientEntityList = undefined;
 pub var vclient: *IBaseClientDLL = undefined;
-pub var iinput: *IInput = undefined;
+var iinput: *IInput = undefined;
 
 const GetDamagePosition_patterns = zhook.mem.makePatterns(.{
     // 5135
@@ -102,11 +102,11 @@ const GetDamagePosition_patterns = zhook.mem.makePatterns(.{
     "55 8B EC 83 EC ?? 56 8B F1 E8 ?? ?? ?? ?? E8 ?? ?? ?? ??",
 });
 
-pub var mainViewOrigin: *const fn () callconv(.C) *const Vector = undefined;
-pub var mainViewAngles: *const fn () callconv(.C) *const QAngle = undefined;
+pub var mainViewOrigin: ?*const fn () callconv(.C) *const Vector = null;
+pub var mainViewAngles: ?*const fn () callconv(.C) *const QAngle = null;
 
 fn init() bool {
-    const clientFactory = interfaces.getFactory("client.dll") orelse {
+    const clientFactory = interfaces.getFactory("client") orelse {
         core.log.err("Failed to get client interface factory", .{});
         return false;
     };
@@ -131,49 +131,50 @@ fn init() bool {
         else => unreachable,
     }
 
-    iinput = vclient.findIInput() orelse {
-        core.log.err("Failed to find IInput interface", .{});
-        return false;
-    };
+    if (vclient.findIInput()) |_iinput| {
+        iinput = _iinput;
 
-    IInput.origCreateMove = core.hook_manager.hookVMT(
-        IInput.CreateMoveFunc,
-        iinput._vt,
-        IInput.VTIndex.createMove,
-        IInput.hookedCreateMove,
-    ) catch {
-        core.log.err("Failed to hook CreateMove", .{});
-        return false;
-    };
+        IInput.origCreateMove = core.hook_manager.hookVMT(
+            IInput.CreateMoveFunc,
+            iinput._vt,
+            IInput.VTIndex.createMove,
+            IInput.hookedCreateMove,
+        ) catch {
+            core.log.err("Failed to hook CreateMove", .{});
+            return false;
+        };
 
-    IInput.origDecodeUserCmdFromBuffer = core.hook_manager.hookVMT(
-        IInput.DecodeUserCmdFromBufferFunc,
-        iinput._vt,
-        IInput.VTIndex.decodeUserCmdFromBuffer,
-        IInput.hookedDecodeUserCmdFromBuffer,
-    ) catch {
-        core.log.err("Failed to hook DecodeUserCmdFromBuffer", .{});
-        return false;
-    };
+        IInput.origDecodeUserCmdFromBuffer = core.hook_manager.hookVMT(
+            IInput.DecodeUserCmdFromBufferFunc,
+            iinput._vt,
+            IInput.VTIndex.decodeUserCmdFromBuffer,
+            IInput.hookedDecodeUserCmdFromBuffer,
+        ) catch {
+            core.log.err("Failed to hook DecodeUserCmdFromBuffer", .{});
+            return false;
+        };
 
-    event.create_move.works = true;
+        event.create_move.works = true;
+    } else {
+        core.log.warn("Failed to find IInput interface", .{});
+    }
 
     const client = zhook.mem.getModule("client") orelse return false;
-    const GetDamagePosition_match = zhook.mem.scanUniquePatterns(client, GetDamagePosition_patterns) orelse {
-        core.log.err("Failed to find CHudDamageIndicator::GetDamagePosition", .{});
-        return false;
-    };
-
-    switch (GetDamagePosition_match.index) {
-        0 => {
-            mainViewOrigin = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(GetDamagePosition_match.ptr + 8) +% zhook.mem.loadValue(u32, GetDamagePosition_match.ptr + 4))));
-            mainViewAngles = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(GetDamagePosition_match.ptr + 13) +% zhook.mem.loadValue(u32, GetDamagePosition_match.ptr + 9))));
-        },
-        1 => {
-            mainViewOrigin = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(GetDamagePosition_match.ptr + 14) +% zhook.mem.loadValue(u32, GetDamagePosition_match.ptr + 10))));
-            mainViewAngles = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(GetDamagePosition_match.ptr + 19) +% zhook.mem.loadValue(u32, GetDamagePosition_match.ptr + 15))));
-        },
-        else => unreachable,
+    const GetDamagePosition_match = zhook.mem.scanUniquePatterns(client, GetDamagePosition_patterns);
+    if (GetDamagePosition_match) |match| {
+        switch (match.index) {
+            0 => {
+                mainViewOrigin = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 8) +% zhook.mem.loadValue(u32, match.ptr + 4))));
+                mainViewAngles = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 13) +% zhook.mem.loadValue(u32, match.ptr + 9))));
+            },
+            1 => {
+                mainViewOrigin = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 14) +% zhook.mem.loadValue(u32, match.ptr + 10))));
+                mainViewAngles = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 19) +% zhook.mem.loadValue(u32, match.ptr + 15))));
+            },
+            else => unreachable,
+        }
+    } else {
+        core.log.warn("Failed to find CHudDamageIndicator::GetDamagePosition", .{});
     }
 
     return true;

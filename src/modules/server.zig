@@ -3,10 +3,11 @@ const std = @import("std");
 const interfaces = @import("../interfaces.zig");
 
 const sdk = @import("sdk");
+const abi = sdk.abi;
 const Vector = sdk.Vector;
 const Trace = sdk.Trace;
 const CMoveData = sdk.CMoveData;
-const VCallConv = sdk.VCallConv;
+const VCallConv = abi.VCallConv;
 
 const core = @import("../core.zig");
 const game_detection = @import("../utils/game_detection.zig");
@@ -26,8 +27,8 @@ const CGameMovement = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const getPlayerMins = 8;
-        const getPlayerMaxs = 9;
+        const getPlayerMins = 8 + abi.dtor_adjust;
+        const getPlayerMaxs = 9 + abi.dtor_adjust;
         var tracePlayerBBox: usize = undefined;
     };
 
@@ -253,7 +254,7 @@ fn init() bool {
                 CGameMovement.use_player_minsmaxs_v2 = false;
                 CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
 
-                CGameMovement.VTIndex.tracePlayerBBox = 45;
+                CGameMovement.VTIndex.tracePlayerBBox = 45 + abi.dtor_adjust;
             },
             1 => { // 5135
                 CGameMovement.offset_player = 4;
@@ -262,7 +263,7 @@ fn init() bool {
                 CGameMovement.use_player_minsmaxs_v2 = false;
                 CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
 
-                CGameMovement.VTIndex.tracePlayerBBox = 10;
+                CGameMovement.VTIndex.tracePlayerBBox = 10 + abi.dtor_adjust;
             },
             2 => { // steampipe
                 CGameMovement.offset_player = 4;
@@ -270,7 +271,7 @@ fn init() bool {
 
                 CGameMovement.use_player_minsmaxs_v2 = true;
 
-                CGameMovement.VTIndex.tracePlayerBBox = 10;
+                CGameMovement.VTIndex.tracePlayerBBox = 10 + abi.dtor_adjust;
             },
             else => unreachable,
         }

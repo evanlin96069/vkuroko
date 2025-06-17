@@ -3,6 +3,8 @@ const builtin = @import("builtin");
 
 const core = @import("core.zig");
 
+const engine = @import("modules/engine.zig");
+
 pub const CreateInterfaceFn = *const fn (name: [*:0]const u8, ret: ?*c_int) callconv(.C) ?*align(@alignOf(*anyopaque)) anyopaque;
 
 pub var engineFactory: CreateInterfaceFn = undefined;
@@ -13,8 +15,24 @@ const InterfaceInfo = struct {
     interface: *align(@alignOf(*anyopaque)) anyopaque,
 };
 
+const lib_ext = switch (builtin.os.tag) {
+    .windows => ".dll",
+    .linux => ".so",
+    .macos => ".dylib",
+    else => @compileError("Unsupported OS"),
+};
+
 fn getProcAddress(comptime module_name: []const u8, comptime name: [:0]const u8) !CreateInterfaceFn {
-    var lib = try std.DynLib.open(module_name);
+    const lib_name = module_name ++ lib_ext;
+
+    var lib: std.DynLib = undefined;
+    if (builtin.os.tag != .windows and (std.mem.eql(u8, "server", module_name) or std.mem.eql(u8, "client", module_name))) {
+        // TODO: Implement this properly
+        var buf: [std.fs.max_path_bytes]u8 = undefined;
+        lib = try std.DynLib.open(try std.fmt.bufPrint(&buf, "{s}/bin/{s}", .{ engine.client.getGameDirectory(), lib_name }));
+    } else {
+        lib = try std.DynLib.open(lib_name);
+    }
     defer lib.close();
     return lib.lookup(CreateInterfaceFn, name) orelse return error.SymbolNotFound;
 }

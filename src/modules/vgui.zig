@@ -1,6 +1,8 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const sdk = @import("sdk");
+const abi = sdk.abi;
 
 const interfaces = @import("../interfaces.zig");
 const core = @import("../core.zig");
@@ -11,7 +13,7 @@ const zhook = @import("zhook");
 const Module = @import("Module.zig");
 
 const Color = sdk.Color;
-const VCallConv = sdk.VCallConv;
+const VCallConv = abi.VCallConv;
 
 pub var module: Module = .{
     .name = "vgui",
@@ -58,11 +60,11 @@ const IEngineVGui = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const isInitialized: usize = 7;
+        const isInitialized: usize = 7 + abi.dtor_adjust;
     };
 
     const VTable = extern struct {
-        destruct: *const anyopaque,
+        dtor: abi.DtorVTable,
         getPanel: *const fn (this: *anyopaque, panel_type: c_int) callconv(VCallConv) c_uint,
         isGameUIVisible: *const fn (this: *anyopaque) callconv(VCallConv) bool,
     };
@@ -85,12 +87,12 @@ const IMatSystemSurface = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const drawSetColor: usize = 10;
+        const drawSetColor: usize = if (builtin.os.tag == .windows) 10 else 11;
         const drawFilledRect: usize = 12;
         const drawOutlinedRect: usize = 14;
         const drawLine: usize = 15;
         const drawSetTextFont: usize = 17;
-        const drawSetTextColor: usize = 18;
+        const drawSetTextColor: usize = if (builtin.os.tag == .windows) 18 else 19;
         const drawSetTextPos: usize = 20;
         const drawPrintText: usize = 22;
         var getScreenSize: usize = undefined;
@@ -178,8 +180,8 @@ const ISchemeManager = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const getDefaultScheme: usize = 4;
-        const getIScheme: usize = 8;
+        const getDefaultScheme: usize = 4 + abi.dtor_adjust;
+        const getIScheme: usize = 8 + abi.dtor_adjust;
     };
 
     fn getDefaultScheme(self: *ISchemeManager) c_ulong {
@@ -197,7 +199,7 @@ const IScheme = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const getFont: usize = 3;
+        const getFont: usize = 3 + abi.dtor_adjust;
     };
 
     pub fn getFont(self: *IScheme, name: [*:0]const u8, proportional: bool) c_ulong {
@@ -212,7 +214,7 @@ fn hookedCFPSPanelShouldDraw(this: *anyopaque) callconv(VCallConv) bool {
 }
 
 const CFPSPanelShouldDrawFunc = *const @TypeOf(hookedCFPSPanelShouldDraw);
-var origCFPSPanelShouldDraw: ?CFPSPanelShouldDrawFunc = null;
+pub var origCFPSPanelShouldDraw: ?CFPSPanelShouldDrawFunc = null;
 
 const CFPSPanelShouldDraw_patterns = zhook.mem.makePatterns(.{
     "80 3D ?? ?? ?? ?? 00 75 ?? A1 ?? ?? ?? ?? 83 78 ?? 00 74 ??",
@@ -240,16 +242,16 @@ fn init() bool {
             IMatSystemSurface.VTIndex.getFontTall = 67;
             IMatSystemSurface.VTIndex.getTextSize = 72;
             IMatSystemSurface.VTIndex.drawOutlinedCircle = 96;
-            IPanel.VTIndex.getName = 35;
-            IPanel.VTIndex.paintTraverse = 40;
+            IPanel.VTIndex.getName = 35 + abi.dtor_adjust;
+            IPanel.VTIndex.paintTraverse = 40 + abi.dtor_adjust;
         },
         8 => {
             IMatSystemSurface.VTIndex.getScreenSize = 38;
             IMatSystemSurface.VTIndex.getFontTall = 69;
             IMatSystemSurface.VTIndex.getTextSize = 75;
             IMatSystemSurface.VTIndex.drawOutlinedCircle = 99;
-            IPanel.VTIndex.getName = 36;
-            IPanel.VTIndex.paintTraverse = 41;
+            IPanel.VTIndex.getName = 36 + abi.dtor_adjust;
+            IPanel.VTIndex.paintTraverse = 41 + abi.dtor_adjust;
         },
         else => unreachable,
     }

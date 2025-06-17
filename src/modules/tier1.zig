@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const sdk = @import("sdk");
 
@@ -7,7 +8,8 @@ const tier0 = @import("tier0.zig");
 const core = @import("../core.zig");
 const FileCompletion = @import("../utils/completion.zig").FileCompletion;
 
-const VCallConv = sdk.VCallConv;
+const abi = sdk.abi;
+const VCallConv = sdk.abi.VCallConv;
 
 const Module = @import("Module.zig");
 
@@ -53,7 +55,7 @@ pub const ConCommandBase = extern struct {
     flags: FCvar = .{},
 
     const VTable = extern struct {
-        destruct: *const anyopaque,
+        dtor: abi.DtorVTable,
         isCommand: *const fn (this: *const anyopaque) callconv(VCallConv) bool,
         isFlagSet: *const anyopaque,
         addFlags: *const anyopaque,
@@ -165,14 +167,20 @@ pub const ConCommand = extern struct {
 };
 
 pub const IConVar = extern struct {
-    _vt: *align(@alignOf(*anyopaque)) const anyopaque = &vtable,
+    _vt: *align(@alignOf(*anyopaque)) const anyopaque = &class_meta.vtable,
 
-    var vtable: VTable = undefined;
+    var class_meta: abi.ClassMeta(VTable) = undefined;
 
-    const VTable = extern struct {
+    const VTable = if (builtin.os.tag == .windows) extern struct {
         setInt: *const fn (this: *anyopaque, value: c_int) callconv(VCallConv) void,
         setFloat: *const fn (this: *anyopaque, value: f32) callconv(VCallConv) void,
         setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(VCallConv) void,
+        getName: *const anyopaque,
+        isFlagSet: *const anyopaque,
+    } else extern struct {
+        setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(VCallConv) void,
+        setFloat: *const fn (this: *anyopaque, value: f32) callconv(VCallConv) void,
+        setInt: *const fn (this: *anyopaque, value: c_int) callconv(VCallConv) void,
         getName: *const anyopaque,
         isFlagSet: *const anyopaque,
     };
@@ -181,7 +189,7 @@ pub const IConVar = extern struct {
 pub const ConVar = extern struct {
     base1: ConCommandBase,
     base2: IConVar = .{
-        ._vt = &IConVar.vtable,
+        ._vt = &IConVar.class_meta.vtable,
     },
     parent: ?*ConVar = null,
     default_value: [*:0]const u8,
@@ -212,13 +220,32 @@ pub const ConVar = extern struct {
         change_callback: ?ConVar.ChangeCallbackFn = null,
     };
 
-    var vtable_meta: extern struct {
-        rtti: *const anyopaque,
-        vtable: VTable,
-    } = undefined;
+    var class_meta: abi.ClassMeta(VTable) = undefined;
 
-    const VTable = extern struct {
+    const VTable = if (builtin.os.tag == .windows) extern struct {
         base: ConCommandBase.VTable,
+        _setString: *const anyopaque,
+        _setFloat: *const anyopaque,
+        _setInt: *const anyopaque,
+        clampValue: *const anyopaque,
+        changeStringValue: *const anyopaque,
+        create: *const fn (
+            this: *anyopaque,
+            name: [*:0]const u8,
+            default_value: [*:0]const u8,
+            flags: FCvar,
+            help_string: [*:0]const u8,
+            has_min: bool,
+            min_value: f32,
+            has_max: bool,
+            max_value: f32,
+            callback: ?ChangeCallbackFn,
+        ) callconv(VCallConv) void,
+    } else extern struct {
+        base: ConCommandBase.VTable,
+        setString: *const anyopaque,
+        setFloat: *const anyopaque,
+        setInt: *const anyopaque,
         _setString: *const anyopaque,
         _setFloat: *const anyopaque,
         _setInt: *const anyopaque,
@@ -241,7 +268,7 @@ pub const ConVar = extern struct {
     pub fn init(cvar: Data) ConVar {
         return ConVar{
             .base1 = .{
-                ._vt = &ConVar.vtable_meta.vtable,
+                ._vt = &ConVar.class_meta.vtable,
                 .name = cvar.name,
                 .flags = cvar.flags,
                 .help_string = cvar.help_string,
@@ -276,8 +303,6 @@ pub const ConVar = extern struct {
             self.max_value,
             self.change_callback,
         );
-
-        icvar.registerConCommandBase(@ptrCast(self));
     }
 
     pub fn getParent(self: *ConVar) *ConVar {
@@ -400,6 +425,7 @@ const ICvar = extern struct {
 
         getCommandLineValue: *const anyopaque,
 
+        // The order of const and non-const version of these function will be opposite on Linux, but should still work.
         findCommandBaseConst: *const anyopaque,
         findCommandBase: *const fn (this: *anyopaque, name: [*:0]const u8) callconv(VCallConv) ?*ConCommandBase,
         findVarConst: *const anyopaque,
@@ -491,13 +517,21 @@ fn init() bool {
 
     // Stealing vtables from existing command and cvar
     const cvar_vt_ptr: *const ConVar.VTable = @ptrCast(cvar.base1._vt);
-    ConVar.vtable_meta.vtable = cvar_vt_ptr.*;
-    ConVar.vtable_meta.vtable.base.getDLLIdentifier = ConCommandBase.getDLLIdentifier;
-    const rtti_ptr: [*]const *const anyopaque = @ptrCast(cvar.base1._vt);
-    ConVar.vtable_meta.rtti = (rtti_ptr - 1)[0];
+    ConVar.class_meta.vtable = cvar_vt_ptr.*;
+    ConVar.class_meta.vtable.base.getDLLIdentifier = ConCommandBase.getDLLIdentifier;
+    const cvar_rtti_ptr: [*]const *const anyopaque = @ptrCast(cvar.base1._vt);
+    ConVar.class_meta.rtti = (cvar_rtti_ptr - 1)[0];
+    if (builtin.os.tag != .windows) {
+        ConVar.class_meta.top_offset = 0; // this is the top
+    }
 
     const iconvar_vt_ptr: *const IConVar.VTable = @ptrCast(cvar.base2._vt);
-    IConVar.vtable = iconvar_vt_ptr.*;
+    IConVar.class_meta.vtable = iconvar_vt_ptr.*;
+    const iconvar_rtti_ptr: [*]const *const anyopaque = @ptrCast(cvar.base2._vt);
+    IConVar.class_meta.rtti = (iconvar_rtti_ptr - 1)[0];
+    if (builtin.os.tag != .windows) {
+        IConVar.class_meta.top_offset = -@offsetOf(ConVar, "base2");
+    }
 
     const cmd_vt_ptr: *const ConCommand.VTable = @ptrCast(cmd.base._vt);
     ConCommand.vtable = cmd_vt_ptr.*;

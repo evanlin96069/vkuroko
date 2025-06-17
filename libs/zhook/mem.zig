@@ -220,6 +220,8 @@ fn getModuleWindows(comptime module_name: []const u8) ?[]const u8 {
 }
 
 fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
+    const file_name = module_name ++ ".so";
+
     const allocator = std.heap.page_allocator;
     var file = try std.fs.openFileAbsolute("/proc/self/maps", .{ .mode = .read_only });
     defer file.close();
@@ -227,18 +229,30 @@ fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
 
     var base: usize = 0;
     var end: usize = 0;
-    var first_match = true;
+    var found = false;
 
     while (try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', 4096)) |line| {
         defer allocator.free(line);
 
         // Example format:
-        // 7f9c84000000-7f9c84200000 r--p 00000000 fd:00 123456 /lib/x86_64-linux-gnu/libc.so.6
-        const pos = std.mem.lastIndexOf(u8, line, module_name) orelse continue;
-        if (pos != 0 and line[pos - 1] != '/' and line[pos - 1] != ' ') continue;
+        // de228000-de229000 r--p 00000000 00:29 1026008    /usr/lib/libstdc++.so.6.0.33
+
+        if (!std.mem.endsWith(u8, line, file_name)) {
+            if (found) break;
+            continue;
+        }
+
+        const pos = line.len - file_name.len;
+        if (line[pos - 1] != '/' and line[pos - 1] != ' ') continue;
 
         const dash = std.mem.indexOfScalar(u8, line, '-') orelse continue;
         const space = std.mem.indexOfScalarPos(u8, line, dash + 1, ' ') orelse continue;
+
+        const perms_start = space + 1;
+        if (line.len < perms_start + 4) continue;
+        const read = line[perms_start];
+        const exec = line[perms_start + 2];
+        if (read == '-' or exec == '-') continue;
 
         const start_hex = line[0..dash];
         const end_hex = line[dash + 1 .. space];
@@ -246,10 +260,10 @@ fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
         const start_addr = try std.fmt.parseInt(usize, start_hex, 16);
         const end_addr = try std.fmt.parseInt(usize, end_hex, 16);
 
-        if (first_match) {
+        if (!found) {
             base = start_addr;
             end = end_addr;
-            first_match = false;
+            found = true;
         } else if (start_addr == end) {
             end = end_addr;
         } else {
@@ -257,7 +271,7 @@ fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
         }
     }
 
-    if (first_match) return null;
+    if (!found) return null;
 
     const size = end - base;
     const ptr: [*]const u8 = @ptrFromInt(base);

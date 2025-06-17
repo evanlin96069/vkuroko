@@ -12,7 +12,7 @@ const vgui = modules.vgui;
 
 const event = @import("event.zig");
 
-const VCallConv = sdk.VCallConv;
+const VCallConv = sdk.abi.VCallConv;
 
 const IServerPluginCallbacks = sdk.IServerPluginCallbacks;
 
