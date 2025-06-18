@@ -14,6 +14,12 @@ const HookType = enum {
     detour,
 };
 
+const Rel32 = struct {
+    offset: u32, // offset into the trampoline
+    dest: u32, // absolute address rel32 points to
+    orig: u32, // original data in the instruction
+};
+
 const HookData = union(HookType) {
     const HookVMTResult = struct {
         vt: [*]*const anyopaque,
@@ -24,6 +30,7 @@ const HookData = union(HookType) {
         alloc: std.mem.Allocator,
         func: [*]u8,
         trampoline: []u8,
+        rel32: ?Rel32 = null,
     };
 
     vmt: HookVMTResult,
@@ -55,18 +62,23 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, alloc: std.mem.All
 
     // Hook the underlying thing if the function jmp immediately.
     while (mem[0] == x86.Opcode.Op1.jmpiw) {
-        const offset = loadValue(u32, mem + 1) +% 5;
-        mem = @ptrFromInt(@intFromPtr(mem) +% offset);
+        const offset = loadValue(u32, mem + 1);
+        mem = @ptrFromInt(@intFromPtr(mem + 5) +% offset);
     }
 
-    try utils.mprotect(mem, 5);
+    var rel32: ?Rel32 = null;
 
     var len: usize = 0;
     while (true) {
         // CALL and JMP instructions use relative offsets rather than absolute addresses.
         // We can't copy them into the trampoline directly. Just returns an error for now.
         if (mem[len] == x86.Opcode.Op1.call) {
-            return error.BadHookInstruction;
+            const offset = loadValue(u32, mem + len + 1);
+            rel32 = .{
+                .offset = len + 1,
+                .dest = @intFromPtr(mem + len + 5) +% offset,
+                .orig = offset,
+            };
         }
 
         len += try x86.x86_len(mem + len);
@@ -76,9 +88,16 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, alloc: std.mem.All
         }
 
         if (mem[len] == x86.Opcode.Op1.jmpiw) {
-            return error.BadHookInstruction;
+            const offset = loadValue(u32, mem + len + 1);
+            rel32 = .{
+                .offset = len + 1,
+                .dest = @intFromPtr(mem + len + 5) +% offset,
+                .orig = offset,
+            };
         }
     }
+
+    try utils.mprotect(mem, 5);
 
     var trampoline = try alloc.alloc(u8, len + 5);
     try utils.mprotect(trampoline.ptr, trampoline.len);
@@ -86,11 +105,16 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, alloc: std.mem.All
     @memcpy(trampoline[0..len], mem);
     trampoline[len] = x86.Opcode.Op1.jmpiw;
     const jmp1_offset: *align(1) u32 = @ptrCast(trampoline.ptr + len + 1);
-    jmp1_offset.* = @intFromPtr(mem) -% (@intFromPtr(trampoline.ptr) +% 5);
+    jmp1_offset.* = @intFromPtr(mem) -% @intFromPtr(trampoline.ptr + 5);
+
+    if (rel32) |r| {
+        const rel_patch: *align(1) u32 = @ptrCast(trampoline.ptr + r.offset);
+        rel_patch.* = r.dest -% (@intFromPtr(trampoline.ptr + r.offset + 4));
+    }
 
     mem[0] = x86.Opcode.Op1.jmpiw;
     const jmp2_offset: *align(1) u32 = @ptrCast(mem + 1);
-    jmp2_offset.* = @intFromPtr(target) -% (@intFromPtr(mem) +% 5);
+    jmp2_offset.* = @intFromPtr(target) -% @intFromPtr(mem + 5);
 
     if (builtin.os.tag == .windows) {
         _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), mem, 5);
@@ -102,6 +126,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, alloc: std.mem.All
             .alloc = alloc,
             .func = mem,
             .trampoline = trampoline,
+            .rel32 = rel32,
         } },
     };
 }
@@ -114,9 +139,15 @@ pub fn unhook(self: *Hook) void {
         },
         .detour => |v| {
             @memcpy(v.func, v.trampoline[0 .. v.trampoline.len - 5]);
+            if (v.rel32) |r| {
+                const orig_patch: *align(1) u32 = @ptrCast(v.func + r.offset);
+                orig_patch.* = r.orig;
+            }
+
             if (builtin.os.tag == .windows) {
                 _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), v.func, 5);
             }
+
             v.alloc.free(v.trampoline);
         },
     }
