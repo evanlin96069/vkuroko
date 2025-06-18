@@ -68,10 +68,10 @@ pub fn init_core_modules() bool {
     for (core_modules) |module| {
         module.loaded = module.init();
         if (!module.loaded) {
-            log.err("Failed to load module {s}.", .{module.name});
+            log.err("Failed to load module {s}", .{module.name});
             return false;
         }
-        log.debug("Module {s} loaded.", .{module.name});
+        log.debug("Module {s} loaded", .{module.name});
     }
     return true;
 }
@@ -84,15 +84,15 @@ pub fn init() bool {
     for (modules) |module| {
         module.loaded = module.init();
         if (!module.loaded) {
-            log.err("Failed to load module {s}.", .{module.name});
+            log.err("Failed to load module {s}", .{module.name});
             all_modules_loaded = false;
         } else {
-            log.debug("Module {s} loaded.", .{module.name});
+            log.debug("Module {s} loaded", .{module.name});
         }
     }
 
     if (!all_modules_loaded) {
-        log.err("Failed to load all modules. Stop loading features.", .{});
+        log.err("Failed to load all modules. Stop loading features", .{});
         return false;
     }
 
@@ -109,14 +109,14 @@ fn init_features() void {
             feature.loaded = feature.init();
             if (!feature.loaded) {
                 feature.status = .failed;
-                log.warn("Failed to load feature {s}.", .{feature.name});
+                log.warn("Failed to load feature {s}", .{feature.name});
             } else {
                 feature.status = .ok;
-                log.debug("Feature {s} loaded.", .{feature.name});
+                log.debug("Feature {s} loaded", .{feature.name});
             }
         } else {
             feature.status = .skipped;
-            log.info("Skipped loading feature {s}.", .{feature.name});
+            log.info("Skipped loading feature {s}", .{feature.name});
         }
     }
 }

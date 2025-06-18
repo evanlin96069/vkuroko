@@ -443,6 +443,14 @@ fn init() bool {
         }
     }
 
+    core.log.debug("Found {d} server datamaps and {d} client datamaps", .{ server_map.count(), client_map.count() });
+    if (server_map.count() == 0 and client_map.count() == 0) {
+        server_map.deinit();
+        client_map.deinit();
+        core.log.warn("Found no datamaps", .{});
+        return false;
+    }
+
     vkrk_datamap_print.register();
     vkrk_datamap_walk.register();
 
