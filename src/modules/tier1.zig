@@ -171,18 +171,22 @@ pub const IConVar = extern struct {
 
     var class_meta: abi.ClassMeta(VTable) = undefined;
 
-    const VTable = if (builtin.os.tag == .windows) extern struct {
-        setInt: *const fn (this: *anyopaque, value: c_int) callconv(VCallConv) void,
-        setFloat: *const fn (this: *anyopaque, value: f32) callconv(VCallConv) void,
-        setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(VCallConv) void,
-        getName: *const anyopaque,
-        isFlagSet: *const anyopaque,
-    } else extern struct {
-        setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(VCallConv) void,
-        setFloat: *const fn (this: *anyopaque, value: f32) callconv(VCallConv) void,
-        setInt: *const fn (this: *anyopaque, value: c_int) callconv(VCallConv) void,
-        getName: *const anyopaque,
-        isFlagSet: *const anyopaque,
+    const VTable = switch (builtin.os.tag) {
+        .windows => extern struct {
+            setInt: *const fn (this: *anyopaque, value: c_int) callconv(VCallConv) void,
+            setFloat: *const fn (this: *anyopaque, value: f32) callconv(VCallConv) void,
+            setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(VCallConv) void,
+            getName: *const anyopaque,
+            isFlagSet: *const anyopaque,
+        },
+        .linux => extern struct {
+            setString: *const fn (this: *anyopaque, value: [*:0]const u8) callconv(VCallConv) void,
+            setFloat: *const fn (this: *anyopaque, value: f32) callconv(VCallConv) void,
+            setInt: *const fn (this: *anyopaque, value: c_int) callconv(VCallConv) void,
+            getName: *const anyopaque,
+            isFlagSet: *const anyopaque,
+        },
+        else => unreachable,
     };
 };
 
@@ -222,47 +226,51 @@ pub const ConVar = extern struct {
 
     var class_meta: abi.ClassMeta(VTable) = undefined;
 
-    const VTable = if (builtin.os.tag == .windows) extern struct {
-        base: ConCommandBase.VTable,
-        _setString: *const anyopaque,
-        _setFloat: *const anyopaque,
-        _setInt: *const anyopaque,
-        clampValue: *const anyopaque,
-        changeStringValue: *const anyopaque,
-        create: *const fn (
-            this: *anyopaque,
-            name: [*:0]const u8,
-            default_value: [*:0]const u8,
-            flags: FCvar,
-            help_string: [*:0]const u8,
-            has_min: bool,
-            min_value: f32,
-            has_max: bool,
-            max_value: f32,
-            callback: ?ChangeCallbackFn,
-        ) callconv(VCallConv) void,
-    } else extern struct {
-        base: ConCommandBase.VTable,
-        setString: *const anyopaque,
-        setFloat: *const anyopaque,
-        setInt: *const anyopaque,
-        _setString: *const anyopaque,
-        _setFloat: *const anyopaque,
-        _setInt: *const anyopaque,
-        clampValue: *const anyopaque,
-        changeStringValue: *const anyopaque,
-        create: *const fn (
-            this: *anyopaque,
-            name: [*:0]const u8,
-            default_value: [*:0]const u8,
-            flags: FCvar,
-            help_string: [*:0]const u8,
-            has_min: bool,
-            min_value: f32,
-            has_max: bool,
-            max_value: f32,
-            callback: ?ChangeCallbackFn,
-        ) callconv(VCallConv) void,
+    const VTable = switch (builtin.os.tag) {
+        .windows => extern struct {
+            base: ConCommandBase.VTable,
+            _setString: *const anyopaque,
+            _setFloat: *const anyopaque,
+            _setInt: *const anyopaque,
+            clampValue: *const anyopaque,
+            changeStringValue: *const anyopaque,
+            create: *const fn (
+                this: *anyopaque,
+                name: [*:0]const u8,
+                default_value: [*:0]const u8,
+                flags: FCvar,
+                help_string: [*:0]const u8,
+                has_min: bool,
+                min_value: f32,
+                has_max: bool,
+                max_value: f32,
+                callback: ?ChangeCallbackFn,
+            ) callconv(VCallConv) void,
+        },
+        .linux => extern struct {
+            base: ConCommandBase.VTable,
+            setString: *const anyopaque,
+            setFloat: *const anyopaque,
+            setInt: *const anyopaque,
+            _setString: *const anyopaque,
+            _setFloat: *const anyopaque,
+            _setInt: *const anyopaque,
+            clampValue: *const anyopaque,
+            changeStringValue: *const anyopaque,
+            create: *const fn (
+                this: *anyopaque,
+                name: [*:0]const u8,
+                default_value: [*:0]const u8,
+                flags: FCvar,
+                help_string: [*:0]const u8,
+                has_min: bool,
+                min_value: f32,
+                has_max: bool,
+                max_value: f32,
+                callback: ?ChangeCallbackFn,
+            ) callconv(VCallConv) void,
+        },
+        else => unreachable,
     };
 
     pub fn init(cvar: Data) ConVar {
@@ -521,7 +529,7 @@ fn init() bool {
     ConVar.class_meta.vtable.base.getDLLIdentifier = ConCommandBase.getDLLIdentifier;
     const cvar_rtti_ptr: [*]const *const anyopaque = @ptrCast(cvar.base1._vt);
     ConVar.class_meta.rtti = (cvar_rtti_ptr - 1)[0];
-    if (builtin.os.tag != .windows) {
+    if (builtin.os.tag == .linux) {
         ConVar.class_meta.top_offset = 0; // this is the top
     }
 
@@ -529,7 +537,7 @@ fn init() bool {
     IConVar.class_meta.vtable = iconvar_vt_ptr.*;
     const iconvar_rtti_ptr: [*]const *const anyopaque = @ptrCast(cvar.base2._vt);
     IConVar.class_meta.rtti = (iconvar_rtti_ptr - 1)[0];
-    if (builtin.os.tag != .windows) {
+    if (builtin.os.tag == .linux) {
         IConVar.class_meta.top_offset = -@offsetOf(ConVar, "base2");
     }
 

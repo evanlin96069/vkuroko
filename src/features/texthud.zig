@@ -5,6 +5,7 @@ const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const ConVar = tier1.ConVar;
 const engine = modules.engine;
+const client = modules.client;
 const vgui = modules.vgui;
 
 const event = @import("../event.zig");
@@ -49,6 +50,8 @@ const FPSTextHUD = struct {
     var low: u32 = 0;
 
     fn shouldDraw() bool {
+        if (!client.override_fps_panel) return false;
+
         if (cl_showfps == null) {
             cl_showfps = tier1.icvar.findVar("cl_showfps");
         }
@@ -218,7 +221,7 @@ fn init() bool {
     vkrk_hud_x.register();
     vkrk_hud_y.register();
 
-    if (vgui.origCFPSPanelShouldDraw != null) {
+    if (client.origCFPSPanel__ShouldDraw != null) {
         FPSTextHUD.register();
     }
 

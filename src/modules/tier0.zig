@@ -9,7 +9,7 @@ const lib_name = switch (builtin.os.tag) {
     .windows => "tier0.dll",
     .linux => "libtier0.so",
     .macos => "libtier0.dylib",
-    else => @compileError("Unsupported OS"),
+    else => unreachable,
 };
 
 const names = switch (builtin.os.tag) {
@@ -27,7 +27,7 @@ const names = switch (builtin.os.tag) {
         .devMsg = "_Z6DevMsgPKcz",
         .devWarning = "_Z10DevWarningPKcz",
     },
-    else => @compileError("Unsupported OS"),
+    else => unreachable,
 };
 
 pub var module: Module = .{

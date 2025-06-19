@@ -48,26 +48,30 @@ fn getPluginIndex() ?u32 {
     return null;
 }
 
-fn vkrk_unload_Fn(args: *const tier1.CCommand) callconv(.C) void {
-    _ = args;
-
+pub fn unloadPlugin() bool {
     if (getPluginIndex()) |index| {
         var buf: [32]u8 = undefined;
         if (std.fmt.bufPrintZ(&buf, "plugin_unload {d}", .{index})) |cmd| {
             core.log.info("Unloading plugin...", .{});
             client.clientCmd(cmd);
-            return;
+            return true;
         } else |_| {
             core.log.warn("Failed to format command", .{});
+            return false;
         }
-    } else {
-        core.log.warn("Could not determine plugin index", .{});
     }
 
-    core.log.warn("Failed to unload plugin.", .{});
+    core.log.warn("Could not determine plugin index", .{});
+    return false;
 }
 
-pub var sdk_version: u32 = 0;
+fn vkrk_unload_Fn(args: *const tier1.CCommand) callconv(.C) void {
+    _ = args;
+
+    if (!unloadPlugin()) {
+        core.log.warn("Failed to unload plugin", .{});
+    }
+}
 
 const IVEngineServer = extern struct {
     _vt: [*]*const anyopaque,
@@ -174,6 +178,8 @@ const IEngineTrace = extern struct {
     }
 };
 
+pub var engine_dll: []const u8 = "";
+
 pub var server: *IVEngineServer = undefined;
 pub var client: *IVEngineClient = undefined;
 
@@ -185,6 +191,8 @@ pub var trace_client: *IEngineTrace = undefined;
 pub var plugin_helper: *sdk.CServerPlugin = undefined;
 
 fn init() bool {
+    engine_dll = zhook.utils.getModule("engine") orelse return false;
+
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
         core.log.err("Failed to get IVEngineServer interface", .{});
         return false;
@@ -195,7 +203,6 @@ fn init() bool {
         return false;
     };
     client = @ptrCast(client_info.interface);
-    sdk_version = if (client_info.version == 14) 2013 else 2007;
 
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
         core.log.err("Failed to get IVEngineServer interface", .{});

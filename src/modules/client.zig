@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const interfaces = @import("../interfaces.zig");
 const core = @import("../core.zig");
@@ -49,12 +50,37 @@ const IBaseClientDLL = extern struct {
     fn findIInput(self: *IBaseClientDLL) ?*IInput {
         const addr: [*]const u8 = @ptrCast(self._vt[VTIndex.decodeUserCmdFromBuffer]);
         var p = addr;
-        while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
-            return null;
-        })) {
-            if (p[0] == zhook.x86.Opcode.Op1.movrmw and p[1] == zhook.x86.modrm(0, 1, 5)) {
-                return zhook.mem.loadValue(**IInput, p + 2).*;
-            }
+        switch (builtin.os.tag) {
+            .windows => {
+                while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
+                    return null;
+                })) {
+                    if (p[0] == zhook.x86.Opcode.Op1.movrmw and p[1] == zhook.x86.modrm(0, 1, 5)) {
+                        return zhook.mem.loadValue(**IInput, p + 2).*;
+                    }
+                }
+            },
+            .linux => {
+                var GOT_addr: ?u32 = null;
+                while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
+                    return null;
+                })) {
+                    if (p[0] == zhook.x86.Opcode.Op1.call) {
+                        if (zhook.utils.matchPIC(p)) |off| {
+                            // imm32 from add
+                            const imm32 = zhook.mem.loadValue(u32, p + off);
+                            GOT_addr = @intFromPtr(p + 5) +% imm32;
+                        }
+                    } else if (p[0] == zhook.x86.Opcode.Op1.lea) {
+                        if (GOT_addr) |base| {
+                            // imm32 from lea
+                            const imm32 = zhook.mem.loadValue(u32, p + 2);
+                            return @as(**IInput, @ptrFromInt(base + imm32)).*;
+                        }
+                    }
+                }
+            },
+            else => unreachable,
         }
         return null;
     }
@@ -95,17 +121,51 @@ pub var entlist: *IClientEntityList = undefined;
 pub var vclient: *IBaseClientDLL = undefined;
 var iinput: *IInput = undefined;
 
-const GetDamagePosition_patterns = zhook.mem.makePatterns(.{
-    // 5135
-    "83 EC 18 E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B 08 89 4C 24 0C 8B 50 04 6A 00 89 54 24 14 8B 40 08 6A 00 8D 4C 24 08 51 8D 54 24 18 52 89 44 24 24",
-    // 1910503
-    "55 8B EC 83 EC ?? 56 8B F1 E8 ?? ?? ?? ?? E8 ?? ?? ?? ??",
+pub var override_fps_panel = false;
+const CFPSPanel__ShouldDrawFunc = *const @TypeOf(hookedCFPSPanel__ShouldDraw);
+pub var origCFPSPanel__ShouldDraw: ?CFPSPanel__ShouldDrawFunc = null;
+
+fn hookedCFPSPanel__ShouldDraw(this: *anyopaque) callconv(VCallConv) bool {
+    if (override_fps_panel) {
+        return false;
+    }
+    return origCFPSPanel__ShouldDraw.?(this);
+}
+
+const CFPSPanel__ShouldDraw_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
+    .windows => .{
+        // 5135
+        "80 3D ?? ?? ?? ?? 00 75 ?? A1 ?? ?? ?? ?? 83 78 ?? 00 74 ??",
+    },
+    .linux => .{
+        // 9786830
+        "E8 ?? ?? ?? ?? 81 C2 ?? ?? ?? ?? 55 89 E5 53 8B 4D 08",
+    },
+    else => unreachable,
+});
+
+const GetDamagePosition_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
+    .windows => .{
+        // 5135
+        "83 EC 18 E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B 08 89 4C 24 0C 8B 50 04 6A 00 89 54 24 14 8B 40 08 6A 00 8D 4C 24 08 51 8D 54 24 18 52 89 44 24 24",
+        // 1910503
+        "55 8B EC 83 EC ?? 56 8B F1 E8 ?? ?? ?? ?? E8 ?? ?? ?? ??",
+    },
+    .linux => .{
+        // 9786830
+        "55 89 E5 56 53 E8 ?? ?? ?? ?? 81 C3 ?? ?? ?? ?? 83 EC 30 8B 75 0C E8 ?? ?? ?? ?? E8 ?? ?? ?? ??",
+    },
+    else => unreachable,
 });
 
 pub var mainViewOrigin: ?*const fn () callconv(.C) *const Vector = null;
 pub var mainViewAngles: ?*const fn () callconv(.C) *const QAngle = null;
 
+pub var client_dll: []const u8 = undefined;
+
 fn init() bool {
+    client_dll = zhook.utils.getModule("client") orelse return false;
+
     const clientFactory = interfaces.getFactory("client") orelse {
         core.log.err("Failed to get client interface factory", .{});
         return false;
@@ -159,8 +219,7 @@ fn init() bool {
         core.log.warn("Failed to find IInput interface", .{});
     }
 
-    const client = zhook.mem.getModule("client") orelse return false;
-    const GetDamagePosition_match = zhook.mem.scanUniquePatterns(client, GetDamagePosition_patterns);
+    const GetDamagePosition_match = zhook.mem.scanUniquePatterns(client_dll, GetDamagePosition_patterns);
     if (GetDamagePosition_match) |match| {
         switch (match.index) {
             0 => {
@@ -176,6 +235,19 @@ fn init() bool {
     } else {
         core.log.warn("Failed to find CHudDamageIndicator::GetDamagePosition", .{});
     }
+
+    origCFPSPanel__ShouldDraw = core.hook_manager.findAndHook(
+        CFPSPanel__ShouldDrawFunc,
+        "client",
+        CFPSPanel__ShouldDraw_patterns,
+        hookedCFPSPanel__ShouldDraw,
+    ) catch |e| blk: {
+        switch (e) {
+            error.PatternNotFound => core.log.debug("Cannot find CFPSPanel::ShouldDraw", .{}),
+            else => core.log.debug("Failed to hook CFPSPanel::ShouldDraw: {!}", .{e}),
+        }
+        break :blk null;
+    };
 
     return true;
 }

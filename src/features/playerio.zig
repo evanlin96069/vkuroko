@@ -17,7 +17,6 @@ const ConVar = tier1.ConVar;
 const engine = modules.engine;
 const client = modules.client;
 const server = modules.server;
-const vgui = modules.vgui;
 
 const sdk = @import("sdk");
 const Vector = sdk.Vector;
@@ -228,10 +227,13 @@ const PosTextHUD = struct {
     }
 
     fn register() void {
-        texthud.addHUDElement(.{
-            .shouldDraw = shouldDraw,
-            .paint = paint,
-        });
+        if (client.origCFPSPanel__ShouldDraw != null and client.mainViewOrigin != null and client.mainViewAngles != null) {
+            client.override_fps_panel = true;
+            texthud.addHUDElement(.{
+                .shouldDraw = shouldDraw,
+                .paint = paint,
+            });
+        }
     }
 };
 
@@ -292,13 +294,7 @@ var sv_accelerate: *ConVar = undefined;
 var sv_airaccelerate: *ConVar = undefined;
 
 fn shouldLoad() bool {
-    if (datamap.feature.loaded) {
-        if (vgui.origCFPSPanelShouldDraw != null) {
-            return client.mainViewOrigin != null and client.mainViewAngles != null;
-        }
-        return true;
-    }
-    return false;
+    return datamap.feature.loaded;
 }
 
 fn init() bool {
@@ -420,11 +416,8 @@ fn init() bool {
         return false;
     }
 
-    if (vgui.origCFPSPanelShouldDraw != null) {
+    if (texthud.feature.loaded) {
         PosTextHUD.register();
-    }
-
-    if (event.create_move.works) {
         PlayerioTextHUD.register();
     }
 

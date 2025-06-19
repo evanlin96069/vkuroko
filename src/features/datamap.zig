@@ -1,9 +1,13 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const core = @import("../core.zig");
 const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const ConCommand = tier1.ConCommand;
+
+const server = modules.server;
+const client = modules.client;
 
 const Feature = @import("Feature.zig");
 
@@ -25,8 +29,16 @@ const DataMapInfo = struct {
     map: *DataMap,
 
     fn fromPattern(pattern: MatchedPattern) DataMapInfo {
-        const num_field_offset: usize = 6;
-        const map_offset: usize = if (pattern.index == 2) 17 else 12;
+        const num_field_offset: usize = switch (builtin.os.tag) {
+            .windows => 6,
+            .linux => if (pattern.index == 2) 6 else 11,
+            else => unreachable,
+        };
+        const map_offset: usize = switch (builtin.os.tag) {
+            .windows => if (pattern.index == 2) 17 else 12,
+            .linux => if (pattern.index == 2) 11 else 1,
+            else => unreachable,
+        };
 
         const num_fields: *align(1) const c_int = @ptrCast(pattern.ptr + num_field_offset);
         const map: *align(1) const *DataMap = @ptrCast(pattern.ptr + map_offset);
@@ -283,10 +295,18 @@ fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize
     try dll_map.put(key, map);
 }
 
-const datamap_patterns = zhook.mem.makePatterns(.{
-    "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8",
-    "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C3",
-    "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8 ?? ?? ?? ?? C7 05",
+const datamap_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
+    .windows => .{
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8",
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C3",
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8 ?? ?? ?? ?? C7 05",
+    },
+    .linux => .{
+        "B8 ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05",
+        "B8 ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? 89 E5 5D C7 05",
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8 ?? ?? ?? ?? C7 05",
+    },
+    else => unreachable,
 });
 
 var vkrk_datamap_print = ConCommand.init(.{
@@ -391,8 +411,8 @@ fn shouldLoad() bool {
 }
 
 fn init() bool {
-    const server_dll = zhook.mem.getModule("server") orelse return false;
-    const client_dll = zhook.mem.getModule("client") orelse return false;
+    const server_dll = server.server_dll;
+    const client_dll = client.client_dll;
 
     var server_patterns = std.ArrayList(MatchedPattern).init(core.allocator);
     defer server_patterns.deinit();
@@ -405,6 +425,8 @@ fn init() bool {
     zhook.mem.scanAllPatterns(client_dll, datamap_patterns[0..], &client_patterns) catch {
         return false;
     };
+
+    core.log.debug("Matched {d} server dattmap patterns, {d} client datamap patterns", .{ server_patterns.items.len, client_patterns.items.len });
 
     server_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
     client_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);

@@ -4,6 +4,7 @@ const zhook = @import("zhook");
 
 const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
+const engine = modules.engine;
 
 pub fn doesGameLooksLikePortal() bool {
     const S = struct {
@@ -25,6 +26,8 @@ pub fn getBuildNumber() ?i32 {
         var build_num: ?i32 = null;
     };
 
+    if (!engine.module.loaded) return null;
+
     if (S.initialized) {
         return S.build_num;
     }
@@ -40,24 +43,23 @@ const build_str = zhook.mem.makePattern("45 78 65 20 62 75 69 6C 64 3A");
 
 fn findBuildNumber() ?i32 {
     var build_num: ?i32 = null;
-    if (zhook.mem.getModule("engine")) |engine_dll| {
-        if (zhook.mem.scanFirst(engine_dll, build_str)) |offset| {
-            build_num = calculateBuildNumber(engine_dll[offset + 20 .. offset + 31]);
-        } else if (tier1.icvar.findCommand("version")) |version| {
-            // Find build number via `version` command
-            const module_start = @intFromPtr(engine_dll.ptr);
-            const module_end = module_start + engine_dll.len;
+    const engine_dll = engine.engine_dll;
+    if (zhook.mem.scanFirst(engine_dll, build_str)) |offset| {
+        build_num = calculateBuildNumber(engine_dll[offset + 20 .. offset + 31]);
+    } else if (tier1.icvar.findCommand("version")) |version| {
+        // Find build number via `version` command
+        const module_start = @intFromPtr(engine_dll.ptr);
+        const module_end = module_start + engine_dll.len;
 
-            const build_num_ptr_ptr: *const u8 = @ptrFromInt(@intFromPtr(version.command_callback) + 3);
-            if (@intFromPtr(build_num_ptr_ptr) >= module_start and
-                @intFromPtr(build_num_ptr_ptr) <= module_end)
+        const build_num_ptr_ptr: *const u8 = @ptrFromInt(@intFromPtr(version.command_callback) + 3);
+        if (@intFromPtr(build_num_ptr_ptr) >= module_start and
+            @intFromPtr(build_num_ptr_ptr) <= module_end)
+        {
+            const build_num_ptr: *const u8 = @as(*align(1) const *const u8, @ptrCast(build_num_ptr_ptr)).*;
+            if (@intFromPtr(build_num_ptr) >= module_start and
+                @intFromPtr(build_num_ptr) <= module_end)
             {
-                const build_num_ptr: *const u8 = @as(*align(1) const *const u8, @ptrCast(build_num_ptr_ptr)).*;
-                if (@intFromPtr(build_num_ptr) >= module_start and
-                    @intFromPtr(build_num_ptr) <= module_end)
-                {
-                    build_num = @as(*align(1) const i32, @ptrCast(build_num_ptr)).*;
-                }
+                build_num = @as(*align(1) const i32, @ptrCast(build_num_ptr)).*;
             }
         }
     }

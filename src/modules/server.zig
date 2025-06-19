@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const interfaces = @import("../interfaces.zig");
 
@@ -26,10 +27,18 @@ pub var module: Module = .{
 const CGameMovement = extern struct {
     _vt: [*]*const anyopaque,
 
-    const VTIndex = struct {
-        const getPlayerMins = 8 + abi.dtor_adjust;
-        const getPlayerMaxs = 9 + abi.dtor_adjust;
-        var tracePlayerBBox: usize = undefined;
+    const VTIndex = switch (builtin.os.tag) {
+        .windows => struct {
+            const getPlayerMins = 8;
+            const getPlayerMaxs = 9;
+            var tracePlayerBBox: usize = undefined;
+        },
+        .linux => struct {
+            const getPlayerMins = 29;
+            const getPlayerMaxs = 30;
+            var tracePlayerBBox: usize = undefined;
+        },
+        else => unreachable,
     };
 
     var use_player_minsmaxs_v2 = false;
@@ -206,6 +215,7 @@ const CGameMovement = extern struct {
     }
 };
 
+// For Windows only. We assume Linux is always on steampipe.
 // Ignore first 5 bytes in case other plugin is hooking CheckJumpButton
 const CheckJumpButton_patterns = zhook.mem.makePatterns(.{
     // 3420
@@ -216,18 +226,32 @@ const CheckJumpButton_patterns = zhook.mem.makePatterns(.{
     "?? ?? ?? ?? ?? 18 56 8B F1 8B ?? 04 80 ?? ?? ?? 00 00 00 74 0E 8B ?? 08 83 ?? 28 02 32 C0 5E 8B E5 5D C3",
 });
 
-const TracePlayerBBoxForGround_patterns = zhook.mem.makePatterns(.{
-    // 5135
-    "55 8B EC 83 E4 F0 81 EC 84 00 00 00 53 56 8B 75 24 8B 46 0C D9 46 2C 8B 4E 10",
-    // 7122284
-    "55 8B EC 83 EC 3C 53 56 57 8B F9 8D 4D ??",
+const TracePlayerBBoxForGround_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
+    .windows => .{
+        // 5135
+        "55 8B EC 83 E4 F0 81 EC 84 00 00 00 53 56 8B 75 24 8B 46 0C D9 46 2C 8B 4E 10",
+        // 7122284
+        "55 8B EC 83 EC 3C 53 56 57 8B F9 8D 4D ??",
+    },
+    .linux => .{
+        // 9786830
+        "55 66 0F EF C0 89 E5 57 56 E8 ?? ?? ?? ?? 81 C6 ?? ?? ?? ?? 53 81 EC EC 00 00 00",
+        "55 66 0F EF C0 89 E5 57 56 E8 ?? ?? ?? ?? 81 C6 B2 05 AF 00",
+    },
+    else => unreachable,
 });
-
-const TracePlayerBBoxForGround2_patterns = zhook.mem.makePatterns(.{
-    // 5135
-    "55 8B EC 83 E4 F0 8B 4D 18 8B 01 8B 50 08 81 EC 84 00 00 00 53 56 57 FF D2",
-    // 7122284
-    "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B ?? 89 6C 24 ?? 8B EC 8B 4B ?? 81 EC 98 00 00 00",
+const TracePlayerBBoxForGround2_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
+    .windows => .{
+        // 5135
+        "55 8B EC 83 E4 F0 8B 4D 18 8B 01 8B 50 08 81 EC 84 00 00 00 53 56 57 FF D2",
+        // 7122284
+        "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B ?? 89 6C 24 ?? 8B EC 8B 4B ?? 81 EC 98 00 00 00",
+    },
+    .linux => .{
+        // 9786830
+        "55 66 0F EF C0 89 E5 57 56 E8 ?? ?? ?? ?? 81 C6 ?? ?? ?? ?? 53 81 EC DC 00 00 00 C7 45 80 00 00 00 00",
+    },
+    else => unreachable,
 });
 
 pub fn canTracePlayerBBox() bool {
@@ -235,54 +259,76 @@ pub fn canTracePlayerBBox() bool {
         CGameMovement.origTracePlayerBBoxForGroundV2 != null;
 }
 
+pub var server_dll: []const u8 = undefined;
+
 pub var gm: *CGameMovement = undefined;
 
 fn init() bool {
+    server_dll = zhook.utils.getModule("server") orelse return false;
+
     gm = @ptrCast(interfaces.serverFactory("GameMovement001", null) orelse {
         core.log.err("Failed to get IGameMovement interface", .{});
         return false;
     });
 
-    const server = zhook.mem.getModule("server") orelse return false;
+    var game_movement_info_set = false;
+    switch (builtin.os.tag) {
+        .windows => if (zhook.mem.scanUniquePatterns(server_dll, CheckJumpButton_patterns)) |match| {
+            switch (match.index) {
+                0 => { // 3420
+                    CGameMovement.offset_player = 8;
+                    CGameMovement.offset_mv = 4;
 
-    if (zhook.mem.scanUniquePatterns(server, CheckJumpButton_patterns)) |match| {
-        switch (match.index) {
-            0 => { // 3420
-                CGameMovement.offset_player = 8;
-                CGameMovement.offset_mv = 4;
+                    CGameMovement.use_player_minsmaxs_v2 = false;
+                    CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
 
-                CGameMovement.use_player_minsmaxs_v2 = false;
-                CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
+                    CGameMovement.VTIndex.tracePlayerBBox = 45;
+                },
+                1 => { // 5135
+                    CGameMovement.offset_player = 4;
+                    CGameMovement.offset_mv = 8;
 
-                CGameMovement.VTIndex.tracePlayerBBox = 45 + abi.dtor_adjust;
-            },
-            1 => { // 5135
-                CGameMovement.offset_player = 4;
-                CGameMovement.offset_mv = 8;
+                    CGameMovement.use_player_minsmaxs_v2 = false;
+                    CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
 
-                CGameMovement.use_player_minsmaxs_v2 = false;
-                CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
+                    CGameMovement.VTIndex.tracePlayerBBox = 10;
+                },
+                2 => { // steampipe
+                    CGameMovement.offset_player = 4;
+                    CGameMovement.offset_mv = 8;
 
-                CGameMovement.VTIndex.tracePlayerBBox = 10 + abi.dtor_adjust;
-            },
-            2 => { // steampipe
-                CGameMovement.offset_player = 4;
-                CGameMovement.offset_mv = 8;
+                    CGameMovement.use_player_minsmaxs_v2 = true;
 
-                CGameMovement.use_player_minsmaxs_v2 = true;
+                    CGameMovement.VTIndex.tracePlayerBBox = 10;
+                },
+                else => unreachable,
+            }
+            game_movement_info_set = true;
+        } else {
+            core.log.debug("Failed to find CheckJumpButton", .{});
+        },
+        .linux => {
+            // Linux
+            CGameMovement.offset_player = 4;
+            CGameMovement.offset_mv = 8;
 
-                CGameMovement.VTIndex.tracePlayerBBox = 10 + abi.dtor_adjust;
-            },
-            else => unreachable,
-        }
+            CGameMovement.use_player_minsmaxs_v2 = true;
 
+            CGameMovement.VTIndex.tracePlayerBBox = 11;
+
+            game_movement_info_set = true;
+        },
+        else => unreachable,
+    }
+
+    if (game_movement_info_set) {
         if (game_detection.doesGameLooksLikePortal()) {
             CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
-            if (zhook.mem.scanUniquePatterns(server, TracePlayerBBoxForGround2_patterns)) |_match| {
+            if (zhook.mem.scanUniquePatterns(server_dll, TracePlayerBBoxForGround2_patterns)) |_match| {
                 CGameMovement.origTracePlayerBBoxForGroundV1 = @ptrCast(_match.ptr);
             }
         } else {
-            if (zhook.mem.scanUniquePatterns(server, TracePlayerBBoxForGround_patterns)) |_match| {
+            if (zhook.mem.scanUniquePatterns(server_dll, TracePlayerBBoxForGround_patterns)) |_match| {
                 switch (_match.index) {
                     0 => { // 5135
                         CGameMovement.use_trace_player_bbox_for_ground_v2 = false;
@@ -330,8 +376,6 @@ fn init() bool {
                 ) catch null;
             }
         }
-    } else {
-        core.log.debug("Failed to find CheckJumpButton", .{});
     }
 
     if (!canTracePlayerBBox()) {

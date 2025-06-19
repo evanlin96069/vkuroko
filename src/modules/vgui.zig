@@ -87,12 +87,20 @@ const IMatSystemSurface = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
-        const drawSetColor: usize = if (builtin.os.tag == .windows) 10 else 11;
+        const drawSetColor: usize = switch (builtin.os.tag) {
+            .windows => 10,
+            .linux => 11,
+            else => unreachable,
+        };
         const drawFilledRect: usize = 12;
         const drawOutlinedRect: usize = 14;
         const drawLine: usize = 15;
         const drawSetTextFont: usize = 17;
-        const drawSetTextColor: usize = if (builtin.os.tag == .windows) 18 else 19;
+        const drawSetTextColor: usize = switch (builtin.os.tag) {
+            .windows => 18,
+            .linux => 19,
+            else => unreachable,
+        };
         const drawSetTextPos: usize = 20;
         const drawPrintText: usize = 22;
         var getScreenSize: usize = undefined;
@@ -208,18 +216,6 @@ const IScheme = extern struct {
     }
 };
 
-fn hookedCFPSPanelShouldDraw(this: *anyopaque) callconv(VCallConv) bool {
-    _ = this;
-    return false;
-}
-
-const CFPSPanelShouldDrawFunc = *const @TypeOf(hookedCFPSPanelShouldDraw);
-pub var origCFPSPanelShouldDraw: ?CFPSPanelShouldDrawFunc = null;
-
-const CFPSPanelShouldDraw_patterns = zhook.mem.makePatterns(.{
-    "80 3D ?? ?? ?? ?? 00 75 ?? A1 ?? ?? ?? ?? 83 78 ?? 00 74 ??",
-});
-
 pub var imatsystem: *IMatSystemSurface = undefined;
 pub var ienginevgui: *IEngineVGui = undefined;
 var ipanel: *IPanel = undefined;
@@ -286,19 +282,6 @@ fn init() bool {
         return false;
     };
     event.paint.works = true;
-
-    origCFPSPanelShouldDraw = core.hook_manager.findAndHook(
-        CFPSPanelShouldDrawFunc,
-        "client",
-        CFPSPanelShouldDraw_patterns,
-        hookedCFPSPanelShouldDraw,
-    ) catch |e| blk: {
-        switch (e) {
-            error.PatternNotFound => core.log.debug("Cannot find CFPSPanel::ShouldDraw", .{}),
-            else => core.log.debug("Failed to hook CFPSPanel::ShouldDraw", .{}),
-        }
-        break :blk null;
-    };
 
     return true;
 }

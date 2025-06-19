@@ -19,7 +19,7 @@ const lib_ext = switch (builtin.os.tag) {
     .windows => ".dll",
     .linux => ".so",
     .macos => ".dylib",
-    else => @compileError("Unsupported OS"),
+    else => unreachable,
 };
 
 fn getProcAddress(comptime module_name: []const u8, comptime name: [:0]const u8) !CreateInterfaceFn {
