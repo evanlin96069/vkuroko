@@ -35,16 +35,31 @@ pub fn makeHex(comptime str: []const u8) []const u8 {
     };
 }
 
-pub fn mprotect(ptr: *anyopaque, len: usize) !void {
+pub fn patchCode(addr: [*]u8, data: []const u8) !void {
     if (builtin.os.tag == .windows) {
-        var old_protect: std.os.windows.DWORD = undefined;
-        try std.os.windows.VirtualProtect(ptr, len, std.os.windows.PAGE_EXECUTE_READWRITE, &old_protect);
+        var old_protect: windows.DWORD = undefined;
+
+        try windows.VirtualProtect(addr, data.len, windows.PAGE_EXECUTE_READWRITE, &old_protect);
+        @memcpy(addr, data);
+
+        _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), addr, data.len);
+        try std.os.windows.VirtualProtect(addr, data.len, old_protect, &old_protect);
     } else {
         const page_size = std.heap.page_size_min;
-        const aligned_ptr: *align(page_size) anyopaque = @ptrFromInt(@intFromPtr(ptr) & ~(page_size - 1));
-        const aligned_len = len + (page_size - 1) & ~(page_size - 1);
-        if (std.c.mprotect(aligned_ptr, aligned_len, 0b111) != 0) {
-            return error.MProtectError;
-        }
+        const addr_int = @intFromPtr(addr);
+        const page_start = addr_int & ~(page_size - 1);
+        const page_end = addr_int + data.len;
+        const page_len = (page_end - page_start + page_size - 1) & ~(page_size - 1);
+
+        const prot_all = 0b111; // rwx
+        const prot_rx = 0b101; // r-x
+
+        if (std.c.mprotect(@ptrFromInt(page_start), page_len, prot_all) != 0)
+            return error.MProtectWritable;
+
+        @memcpy(addr, data);
+
+        if (std.c.mprotect(@ptrFromInt(page_start), page_len, prot_rx) != 0)
+            return error.MProtectRestore;
     }
 }

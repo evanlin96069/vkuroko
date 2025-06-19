@@ -5,22 +5,26 @@ const mem = @import("mem.zig");
 
 const HookManager = @This();
 
-alloc: std.mem.Allocator,
 hooks: std.ArrayList(Hook),
+exec_page: []u8,
 
-pub fn init(alloc: std.mem.Allocator) HookManager {
+// Page must has rwx permissions
+pub fn init(alloc: std.mem.Allocator, exec_page: *align(std.heap.page_size_min) [std.heap.page_size_min]u8) HookManager {
     return HookManager{
-        .alloc = alloc,
         .hooks = std.ArrayList(Hook).init(alloc),
+        .exec_page = exec_page[0..],
     };
 }
 
-pub fn deinit(self: *HookManager) void {
+pub fn deinit(self: *HookManager) usize {
+    var count: usize = 0;
     for (self.hooks.items) |*hook| {
-        hook.unhook();
+        hook.unhook() catch continue;
+        count += 1;
     }
 
     self.hooks.deinit();
+    return count;
 }
 
 pub fn findAndHook(self: *HookManager, T: type, comptime module_name: []const u8, patterns: []const []const ?u8, target: *const anyopaque) !T {
@@ -34,7 +38,7 @@ pub fn findAndHook(self: *HookManager, T: type, comptime module_name: []const u8
 
 pub fn hookVMT(self: *HookManager, T: type, vt: [*]*const anyopaque, index: usize, target: *const anyopaque) !T {
     var hook = try Hook.hookVMT(vt, index, target);
-    errdefer hook.unhook();
+    errdefer hook.unhook() catch {};
 
     try self.hooks.append(hook);
 
@@ -42,10 +46,12 @@ pub fn hookVMT(self: *HookManager, T: type, vt: [*]*const anyopaque, index: usiz
 }
 
 pub fn hookDetour(self: *HookManager, T: type, func: *const anyopaque, target: *const anyopaque) !T {
-    var hook = try Hook.hookDetour(@constCast(func), target, self.alloc);
-    errdefer hook.unhook();
+    var hook = try Hook.hookDetour(@constCast(func), target, self.exec_page);
+    errdefer hook.unhook() catch {};
 
     try self.hooks.append(hook);
+
+    self.exec_page = self.exec_page[hook.data.detour.trampoline.len..];
 
     return @ptrCast(hook.orig.?);
 }

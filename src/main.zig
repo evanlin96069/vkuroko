@@ -8,6 +8,7 @@ const interfaces = @import("interfaces.zig");
 
 const modules = @import("modules.zig");
 const tier0 = modules.tier0;
+const engine = modules.engine;
 const vgui = modules.vgui;
 
 const event = @import("event.zig");
@@ -24,6 +25,7 @@ pub const std_options: std.Options = .{
 pub const panic = std.debug.FullPanic(@import("panic.zig").panicFn);
 
 var plugin_loaded: bool = false;
+var should_defer_load: bool = false;
 var skip_unload: bool = false;
 
 var vgui_connect_hook: Hook = undefined;
@@ -34,9 +36,11 @@ fn deferLoad() !bool {
             return false;
         }
 
+        core.log.debug("Plugin loaded early", .{});
+
         const vtidx_connect = 4;
         vgui_connect_hook = try Hook.hookVMT(engine_vgui._vt, vtidx_connect, hookedVGuiConnect);
-        errdefer vgui_connect_hook.unhook();
+        should_defer_load = true;
 
         return true;
     }
@@ -48,8 +52,16 @@ const VGuiConnectFunc = *const @TypeOf(hookedVGuiConnect);
 
 fn hookedVGuiConnect(self: *anyopaque) callconv(VCallConv) void {
     @as(VGuiConnectFunc, @ptrCast(vgui_connect_hook.orig.?))(self);
-    _ = core.init();
-    vgui_connect_hook.unhook();
+    if (should_defer_load) {
+        should_defer_load = false;
+        if (!core.init()) {
+            core.log.info("Try unloading plugin...", .{});
+            if (!engine.module.loaded or !engine.unloadPlugin()) {
+                core.log.warn("Failed to unload plugin", .{});
+            }
+        }
+    }
+    vgui_connect_hook.unhook() catch {};
 }
 
 fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServerFactory: interfaces.CreateInterfaceFn) callconv(VCallConv) bool {
@@ -68,6 +80,7 @@ fn load(_: *anyopaque, interfaceFactory: interfaces.CreateInterfaceFn, gameServe
     }
 
     if (deferLoad() catch blk: {
+        core.log.warn("Failed to defer plugin load", .{});
         core.log.warn("SOME FEATURES MAY BE BROKEN!!!", .{});
         break :blk false;
     }) {

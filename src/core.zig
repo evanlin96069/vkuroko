@@ -16,6 +16,8 @@ pub const windows = @cImport({
 
 pub const log = std.log.scoped(.vkuroko);
 
+var exec_page: [std.heap.page_size_min]u8 align(std.heap.page_size_min) = undefined;
+
 pub var hook_manager: HookManager = undefined;
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -78,7 +80,13 @@ pub fn init_core_modules() bool {
 
 pub fn init() bool {
     event.init();
-    hook_manager = HookManager.init(allocator);
+
+    hook_manager = HookManager.init(allocator, exec_page[0..]);
+    // mprotect after hook manager init so we can always deinit hook manager on unload
+    std.posix.mprotect(exec_page[0..], 0b111) catch {
+        log.err("Failed to setup memory for function hooking", .{});
+        return false;
+    };
 
     var all_modules_loaded: bool = true;
     for (modules) |module| {
@@ -152,12 +160,17 @@ pub fn deinit() void {
         feature.loaded = false;
     }
 
-    hook_manager.deinit();
+    const hook_count = hook_manager.hooks.items.len;
+    const unhook_count = hook_manager.deinit();
+    if (hook_count != unhook_count) {
+        log.warn("Failed to unhook {d} out of {d} functions", .{ hook_count - unhook_count, hook_count });
+    }
     event.deinit();
 
     const leak_check = gpa.deinit();
     if (leak_check == .leak) {
         log.warn("Memory leak detected", .{});
     }
-    tier0.module.loaded = false;
+
+    log.info("Plugin unloaded", .{});
 }
