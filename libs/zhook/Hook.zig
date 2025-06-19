@@ -20,7 +20,7 @@ const Rel32Patch = struct {
 };
 
 // Windows doesn't use PIC
-const PICAddiPatch = switch (builtin.os.tag) {
+const PICPatch = switch (builtin.os.tag) {
     .linux => struct {
         offset: u32, // offset into the original function
         orig: u32, // original data in the instruction
@@ -39,7 +39,7 @@ const HookData = union(HookType) {
         func: [*]u8,
         trampoline: []u8,
         rel32_patch: ?Rel32Patch = null,
-        pic_addi_patch: ?PICAddiPatch = null,
+        pic_patch: ?PICPatch = null,
     };
 
     vmt: HookVMTResult,
@@ -89,46 +89,93 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
     }
 
     var rel32_patch: ?Rel32Patch = null;
-    var pic_addi_patch: ?PICAddiPatch = null;
+    var pic_patch: ?PICPatch = null;
 
     var len: usize = 0;
-    while (true) {
-        if (mem[len] == x86.Opcode.Op1.call) {
-            const offset = loadValue(u32, mem + len + 1);
-            rel32_patch = .{
-                .offset = len + 1,
-                .dest = @intFromPtr(mem + len + 5) +% offset,
-                .orig = offset,
-            };
+    while (true) : (len += try x86.x86_len(mem + len)) {
+        // No checks for rel16 at all. I don't think we will encounter them.
+        const op0 = mem[len];
+        switch (op0) {
+            x86.Opcode.Op1.jmpi8,
+            x86.Opcode.Op1.jcxz,
+            x86.Opcode.Op1.jo,
+            x86.Opcode.Op1.jno,
+            x86.Opcode.Op1.jb,
+            x86.Opcode.Op1.jnb,
+            x86.Opcode.Op1.jz,
+            x86.Opcode.Op1.jnz,
+            x86.Opcode.Op1.jna,
+            x86.Opcode.Op1.ja,
+            x86.Opcode.Op1.js,
+            x86.Opcode.Op1.jns,
+            x86.Opcode.Op1.jp,
+            x86.Opcode.Op1.jnp,
+            x86.Opcode.Op1.jl,
+            x86.Opcode.Op1.jnl,
+            x86.Opcode.Op1.jng,
+            x86.Opcode.Op1.jg,
+            => {
+                // TODO: Make it rel32 jump in the trampoline
+                return error.BadInstruction;
+            },
 
-            if (builtin.os.tag == .linux) {
-                // Look for PIC pattern:
-                // call __i686.get_pc_thunk.reg
-                // add reg, imm32
-                if (isAddImm32(mem + len + 5)) {
-                    const imm32 = loadValue(u32, mem + len + 7);
-                    pic_addi_patch = .{
-                        .offset = len + 7,
-                        .orig = imm32,
-                    };
+            x86.Opcode.Op1.jmpiw,
+            x86.Opcode.Op1.call,
+            => {
+                const offset = loadValue(u32, mem + len + 1);
+                rel32_patch = .{
+                    .offset = len + 1,
+                    .dest = @intFromPtr(mem + len + 5) +% offset,
+                    .orig = offset,
+                };
+
+                if (op0 == x86.Opcode.Op1.call and builtin.os.tag == .linux) {
+                    // Look for PIC pattern:
+                    // call __i686.get_pc_thunk.reg
+                    // add reg, imm32
+                    if (isAddImm32(mem + len + 5)) {
+                        const imm32 = loadValue(u32, mem + len + 7);
+                        pic_patch = .{
+                            .offset = len + 7,
+                            .orig = imm32,
+                        };
+                    }
                 }
-            }
-        }
+            },
 
-        len += try x86.x86_len(mem + len);
-
-        if (len >= 5) {
-            break;
+            x86.Opcode.op2_byte => {
+                const op1 = mem[len + 1];
+                switch (op1) {
+                    x86.Opcode.Op2.joii,
+                    x86.Opcode.Op2.jnoii,
+                    x86.Opcode.Op2.jbii,
+                    x86.Opcode.Op2.jnbii,
+                    x86.Opcode.Op2.jzii,
+                    x86.Opcode.Op2.jnzii,
+                    x86.Opcode.Op2.jnaii,
+                    x86.Opcode.Op2.jaii,
+                    x86.Opcode.Op2.jsii,
+                    x86.Opcode.Op2.jnsii,
+                    x86.Opcode.Op2.jpii,
+                    x86.Opcode.Op2.jnpii,
+                    x86.Opcode.Op2.jlii,
+                    x86.Opcode.Op2.jnlii,
+                    x86.Opcode.Op2.jngii,
+                    x86.Opcode.Op2.jgii,
+                    => {
+                        const offset = loadValue(u32, mem + len + 2);
+                        rel32_patch = .{
+                            .offset = len + 2,
+                            .dest = @intFromPtr(mem + len + 6) +% offset,
+                            .orig = offset,
+                        };
+                    },
+                    else => {},
+                }
+            },
+            else => {},
         }
-
-        if (mem[len] == x86.Opcode.Op1.jmpiw) {
-            const offset = loadValue(u32, mem + len + 1);
-            rel32_patch = .{
-                .offset = len + 1,
-                .dest = @intFromPtr(mem + len + 5) +% offset,
-                .orig = offset,
-            };
-        }
+        if (len >= 5) break;
     }
 
     const trampoline_size = len + 5;
@@ -154,7 +201,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
     try utils.patchCode(mem, detour[0..]);
 
     if (builtin.os.tag == .linux) {
-        if (pic_addi_patch) |p| {
+        if (pic_patch) |p| {
             const delta: u32 = @intFromPtr(trampoline.ptr) -% @intFromPtr(mem);
             const new_value: u32 = p.orig -% delta;
 
@@ -169,7 +216,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
             .func = mem,
             .trampoline = trampoline[0..trampoline_size],
             .rel32_patch = rel32_patch,
-            .pic_addi_patch = pic_addi_patch,
+            .pic_patch = pic_patch,
         } },
     };
 }
@@ -189,7 +236,7 @@ pub fn unhook(self: *Hook) !void {
             }
             try utils.patchCode(v.func, v.trampoline[0 .. v.trampoline.len - 5]);
             if (builtin.os.tag == .linux) {
-                if (v.pic_addi_patch) |p| {
+                if (v.pic_patch) |p| {
                     const bytes = std.mem.toBytes(p.orig);
                     try utils.patchCode(v.func + p.offset, &bytes);
                 }

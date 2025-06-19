@@ -39,7 +39,7 @@ pub fn patchCode(addr: [*]u8, data: []const u8) !void {
     if (builtin.os.tag == .windows) {
         var old_protect: windows.DWORD = undefined;
 
-        try windows.VirtualProtect(addr, data.len, windows.PAGE_EXECUTE_READWRITE, &old_protect);
+        try std.os.windows.VirtualProtect(addr, data.len, windows.PAGE_EXECUTE_READWRITE, &old_protect);
         @memcpy(addr, data);
 
         _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), addr, data.len);
