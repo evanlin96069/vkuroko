@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const x86 = @import("x86.zig");
+const mem = @import("mem.zig");
 
 const windows = @cImport({
     @cDefine("WIN32_LEAN_AND_MEAN", "1");
@@ -65,10 +66,21 @@ pub fn patchCode(addr: [*]u8, data: []const u8, restore_protect: u32) !void {
     }
 }
 
+// Windows: Return entire module memory
+// Linux: Return the code segment memory
 pub fn getModule(comptime module_name: []const u8) ?[]const u8 {
     return switch (builtin.os.tag) {
         .windows => getModuleWindows(module_name),
-        .linux => getModuleLinux(module_name) catch return null,
+        .linux => getModuleLinux(module_name, 0b101) catch return null,
+        else => @compileError("getModule is not available for this target"),
+    };
+}
+
+// Return the entire module memory
+pub fn getEntireModule(comptime module_name: []const u8) ?[]const u8 {
+    return switch (builtin.os.tag) {
+        .windows => getModuleWindows(module_name),
+        .linux => getModuleLinux(module_name, 0) catch return null,
         else => @compileError("getModule is not available for this target"),
     };
 }
@@ -81,11 +93,11 @@ fn getModuleWindows(comptime module_name: []const u8) ?[]const u8 {
     if (windows.GetModuleInformation(windows.GetCurrentProcess(), dll, &info, @sizeOf(windows.MODULEINFO)) == 0) {
         return null;
     }
-    const mem: [*]const u8 = @ptrCast(dll);
-    return mem[0..info.SizeOfImage];
+    const module: [*]const u8 = @ptrCast(dll);
+    return module[0..info.SizeOfImage];
 }
 
-fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
+fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u8 {
     const file_name = module_name ++ ".so";
 
     const allocator = std.heap.page_allocator;
@@ -117,8 +129,11 @@ fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
         const perms_start = space + 1;
         if (line.len < perms_start + 4) continue;
         const read = line[perms_start];
+        const write = line[perms_start + 1];
         const exec = line[perms_start + 2];
-        if (read == '-' or exec == '-') continue;
+        if (permission & 0b001 != 0 and read == '-') continue;
+        if (permission & 0b010 != 0 and write == '-') continue;
+        if (permission & 0b100 != 0 and exec == '-') continue;
 
         const start_hex = line[0..dash];
         const end_hex = line[dash + 1 .. space];
@@ -145,11 +160,11 @@ fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
 }
 
 // Match call + add pattern
-// If matched, mem + len will be the start of the imm32
-pub fn matchPIC(mem: [*]const u8) ?u32 {
-    if (mem[0] != x86.Opcode.Op1.call) return null;
-    if (mem[5] == x86.Opcode.Op1.alumiw) {
-        const modrm = mem[6];
+// If matched, inst + len will be the start of the imm32
+pub fn matchPIC(inst: [*]const u8) ?u32 {
+    if (inst[0] != x86.Opcode.Op1.call) return null;
+    if (inst[5] == x86.Opcode.Op1.alumiw) {
+        const modrm = inst[6];
         // mod must be 0b11  (register operand)
         if ((modrm & 0b1100_0000) != 0b1100_0000) return null;
         // reg/opcode must be 0b000 (ADD)
@@ -160,8 +175,18 @@ pub fn matchPIC(mem: [*]const u8) ?u32 {
         const rm = modrm & 0b0000_0111;
         if (rm == 0b100) return null;
         return 7;
-    } else if (mem[5] == x86.Opcode.Op1.addeaxi) {
+    } else if (inst[5] == x86.Opcode.Op1.addeaxi) {
         return 6;
+    }
+    return null;
+}
+
+const GOT_pattern = mem.makePattern("E8 ?? ?? ?? ?? 05 ?? ?? ?? ?? 8D 80");
+
+pub fn findGOTAddr(module: []const u8) ?u32 {
+    if (mem.scanFirst(module, GOT_pattern)) |offset| {
+        const imm32 = mem.loadValue(u32, module.ptr + offset + 6);
+        return @intFromPtr(module.ptr + offset + 5) +% imm32;
     }
     return null;
 }

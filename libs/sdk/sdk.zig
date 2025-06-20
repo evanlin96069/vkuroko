@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub const abi = @import("abi.zig");
 
@@ -215,6 +216,11 @@ pub const DataMap = extern struct {
         flags: c_short,
         external_name: [*:0]const u8,
         save_restore_ops: *anyopaque,
+        unk1: switch (builtin.os.tag) {
+            .windows => void,
+            .linux => *anyopaque,
+            else => unreachable,
+        },
         inputFunc: *anyopaque,
         td: *DataMap,
         field_size_in_bytes: c_int,

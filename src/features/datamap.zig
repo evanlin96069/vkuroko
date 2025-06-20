@@ -21,50 +21,104 @@ const completion = @import("../utils/completion.zig");
 pub var server_map: std.StringHashMap(std.StringHashMap(usize)) = undefined;
 pub var client_map: std.StringHashMap(std.StringHashMap(usize)) = undefined;
 
-// class names for datamap_walk completion
-var class_names: ?[][]const u8 = null;
+const datamap_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
+    .windows => .{
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8",
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C3",
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8 ?? ?? ?? ?? C7 05",
+    },
+    .linux => .{
+        // These are untested. Hopefully work on old Linux builds that doesn't use PIC.
+        "B8 ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05",
+        "B8 ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? 89 E5 5D C7 05",
+        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8 ?? ?? ?? ?? C7 05",
+    },
+    else => unreachable,
+});
+
+// Linux-only
+const pic_datamap_patterns = zhook.mem.makePatterns(.{
+    "C7 83 ?? ?? ?? ?? ?? ?? ?? ?? 8D 83 ?? ?? ?? ?? 89 83 ?? ?? ?? ?? 8D 83 ?? ?? ?? ?? C7 83",
+    "74 35 C7 83 ?? ?? ?? ?? ?? ?? ?? ?? 8D 83 ?? ?? ?? ?? 89 83 ?? ?? ?? ?? 8D 83 ?? ?? ?? ?? 89 83",
+    "C7 80 ?? ?? ?? ?? ?? ?? ?? ?? 8D 90 ?? ?? ?? ?? 89 90 ?? ?? ?? ?? 8D 80 ?? ?? ?? ?? C3",
+    "C7 ?? ?? ?? ?? ?? ?? ?? ?? ?? 8D ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8D 65",
+});
 
 const DataMapInfo = struct {
     num_fields: c_int,
-    map: *DataMap,
+    map: u32,
 
     fn fromPattern(pattern: MatchedPattern) DataMapInfo {
         const num_field_offset: usize = switch (builtin.os.tag) {
             .windows => 6,
-            .linux => if (pattern.index == 2) 6 else 11,
+            .linux => switch (pattern.index) {
+                0, 1 => 11,
+                2 => 6,
+                else => unreachable,
+            },
             else => unreachable,
         };
         const map_offset: usize = switch (builtin.os.tag) {
-            .windows => if (pattern.index == 2) 17 else 12,
-            .linux => if (pattern.index == 2) 11 else 1,
+            .windows => switch (pattern.index) {
+                0, 1 => 12,
+                2 => 17,
+                else => unreachable,
+            },
+            .linux => switch (pattern.index) {
+                0, 1 => 11,
+                2 => 1,
+                else => unreachable,
+            },
             else => unreachable,
         };
 
-        const num_fields: *align(1) const c_int = @ptrCast(pattern.ptr + num_field_offset);
-        const map: *align(1) const *DataMap = @ptrCast(pattern.ptr + map_offset);
+        const num_fields = zhook.mem.loadValue(c_int, pattern.ptr + num_field_offset);
+        const map: u32 = zhook.mem.loadValue(u32, pattern.ptr + map_offset);
         return DataMapInfo{
-            .num_fields = num_fields.*,
-            .map = map.*,
+            .num_fields = num_fields,
+            .map = map,
+        };
+    }
+
+    fn fromPICPattern(pattern: MatchedPattern, GOT_addr: u32) DataMapInfo {
+        const num_field_offset: usize = switch (pattern.index) {
+            0 => 34,
+            1 => 8,
+            2, 3 => 6,
+            else => unreachable,
+        };
+        const map_offset: usize = switch (pattern.index) {
+            0 => 24,
+            1 => 14,
+            2, 3 => 18,
+            else => unreachable,
+        };
+
+        const num_fields = zhook.mem.loadValue(c_int, pattern.ptr + num_field_offset);
+        const map: u32 = GOT_addr +% zhook.mem.loadValue(u32, pattern.ptr + map_offset);
+        return DataMapInfo{
+            .num_fields = num_fields,
+            .map = map,
         };
     }
 };
 
-fn isAddressLegal(addr: usize, start: usize, len: usize) bool {
-    return addr >= start and addr <= start + len;
+fn isAddressLegal(addr: usize, module: []const u8) bool {
+    const start = @intFromPtr(module.ptr);
+    return addr >= start and addr <= start + module.len;
 }
 
-fn doesMapLooksValid(map: *const DataMap, start: usize, len: usize) bool {
-    if (!isAddressLegal(@intFromPtr(map), start, len)) {
-        return false;
-    }
+fn doesMapLooksValid(map_addr: u32, module: []const u8) bool {
+    if (!isAddressLegal(map_addr, module)) return false;
 
-    if (!isAddressLegal(@intFromPtr(map.data_desc), start, len)) {
-        return false;
-    }
+    // alignment check
+    if (map_addr % @alignOf(DataMap) != 0) return false;
 
-    if (!isAddressLegal(@intFromPtr(map.data_class_name), start, len)) {
-        return false;
-    }
+    const map: *DataMap = @ptrFromInt(map_addr);
+
+    if (!isAddressLegal(@intFromPtr(map.data_desc), module)) return false;
+
+    if (!isAddressLegal(@intFromPtr(map.data_class_name), module)) return false;
 
     var i: u32 = 0;
     while (i < 64) : (i += 1) {
@@ -136,8 +190,8 @@ fn addFields(
 
             if (out_map.get(key)) |v| {
                 if (v != offset) {
-                    std.log.debug("Found a duplicated datamap field with a different offset:", .{});
-                    std.log.debug("{s}: {d}/{d}", .{ key, v, offset });
+                    core.log.debug("Found a duplicated datamap field with a different offset:", .{});
+                    core.log.debug("{s}: {d}/{d}", .{ key, v, offset });
                 }
                 core.allocator.free(key);
             } else {
@@ -295,19 +349,59 @@ fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize
     try dll_map.put(key, map);
 }
 
-const datamap_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
-    .windows => .{
-        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8",
-        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C3",
-        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8 ?? ?? ?? ?? C7 05",
-    },
-    .linux => .{
-        "B8 ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05",
-        "B8 ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? 89 E5 5D C7 05",
-        "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8 ?? ?? ?? ?? C7 05",
-    },
-    else => unreachable,
-});
+fn findMaps(
+    module: []const u8,
+    module_range: []const u8,
+    dll_map: *std.StringHashMap(std.StringHashMap(usize)),
+    class_names_set: *std.StringHashMap(void),
+) !void {
+    var patterns = std.ArrayList(MatchedPattern).init(core.allocator);
+    defer patterns.deinit();
+    try zhook.mem.scanAllPatterns(module, datamap_patterns[0..], &patterns);
+
+    for (patterns.items) |pattern| {
+        const info = DataMapInfo.fromPattern(pattern);
+
+        if (info.num_fields > 0 and doesMapLooksValid(info.map, module_range)) {
+            const map: *DataMap = @ptrFromInt(info.map);
+            addMap(map, dll_map) catch {
+                continue;
+            };
+            class_names_set.put(std.mem.span(map.data_class_name), {}) catch {};
+        }
+    }
+
+    if (builtin.os.tag == .linux) {
+        const GOT_addr = zhook.utils.findGOTAddr(module) orelse return;
+        var pic_patterns = std.ArrayList(MatchedPattern).init(core.allocator);
+        defer pic_patterns.deinit();
+        try zhook.mem.scanAllPatterns(module, pic_datamap_patterns[0..], &pic_patterns);
+
+        for (pic_patterns.items) |pattern| {
+            const info = DataMapInfo.fromPICPattern(pattern, GOT_addr);
+
+            if (info.num_fields > 0 and doesMapLooksValid(info.map, module_range)) {
+                const map: *DataMap = @ptrFromInt(info.map);
+                addMap(map, dll_map) catch {
+                    continue;
+                };
+                class_names_set.put(std.mem.span(map.data_class_name), {}) catch {};
+            }
+        }
+    }
+}
+
+fn deinitMaps(dll_map: *std.StringHashMap(std.StringHashMap(usize))) void {
+    var it = dll_map.iterator();
+    while (it.next()) |kv| {
+        var inner_it = kv.value_ptr.iterator();
+        while (inner_it.next()) |inner_kv| {
+            core.allocator.free(inner_kv.key_ptr.*);
+        }
+        kv.value_ptr.deinit();
+    }
+    dll_map.deinit();
+}
 
 var vkrk_datamap_print = ConCommand.init(.{
     .name = "vkrk_datamap_print",
@@ -384,6 +478,8 @@ fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.C) void {
     }
 }
 
+var class_names: ?[][]const u8 = null;
+
 fn datamap_walk_completionFn(
     partial: [*:0]const u8,
     commands: *[ConCommand.completion_max_items][ConCommand.completion_item_length]u8,
@@ -411,22 +507,12 @@ fn shouldLoad() bool {
 }
 
 fn init() bool {
-    const server_dll = server.server_dll;
-    const client_dll = client.client_dll;
-
-    var server_patterns = std.ArrayList(MatchedPattern).init(core.allocator);
-    defer server_patterns.deinit();
-    zhook.mem.scanAllPatterns(server_dll, datamap_patterns[0..], &server_patterns) catch {
-        return false;
-    };
-
-    var client_patterns = std.ArrayList(MatchedPattern).init(core.allocator);
-    defer client_patterns.deinit();
-    zhook.mem.scanAllPatterns(client_dll, datamap_patterns[0..], &client_patterns) catch {
-        return false;
-    };
-
-    core.log.debug("Matched {d} server dattmap patterns, {d} client datamap patterns", .{ server_patterns.items.len, client_patterns.items.len });
+    var server_dll_range = server.server_dll;
+    var client_dll_range = client.client_dll;
+    if (builtin.os.tag == .linux) {
+        server_dll_range = zhook.utils.getEntireModule("server") orelse return false;
+        client_dll_range = zhook.utils.getEntireModule("client") orelse return false;
+    }
 
     server_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
     client_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
@@ -434,27 +520,23 @@ fn init() bool {
     var class_names_set = std.StringHashMap(void).init(core.allocator);
     defer class_names_set.deinit();
 
-    for (server_patterns.items) |pattern| {
-        const info = DataMapInfo.fromPattern(pattern);
-
-        if (info.num_fields > 0 and doesMapLooksValid(info.map, @intFromPtr(server_dll.ptr), server_dll.len)) {
-            addMap(info.map, &server_map) catch {
-                continue;
-            };
-            class_names_set.put(std.mem.span(info.map.data_class_name), {}) catch {};
-        }
-    }
-
-    for (client_patterns.items) |pattern| {
-        const info = DataMapInfo.fromPattern(pattern);
-
-        if (info.num_fields > 0 and doesMapLooksValid(info.map, @intFromPtr(client_dll.ptr), client_dll.len)) {
-            addMap(info.map, &client_map) catch {
-                continue;
-            };
-            class_names_set.put(std.mem.span(info.map.data_class_name), {}) catch {};
-        }
-    }
+    findMaps(
+        server.server_dll,
+        server_dll_range,
+        &server_map,
+        &class_names_set,
+    ) catch {
+        return false;
+    };
+    findMaps(
+        client.client_dll,
+        client_dll_range,
+        &client_map,
+        &class_names_set,
+    ) catch {
+        deinitMaps(&server_map);
+        return false;
+    };
 
     class_names = core.allocator.alloc([]const u8, class_names_set.count()) catch null;
     if (class_names) |names| {
@@ -484,23 +566,6 @@ fn deinit() void {
         core.allocator.free(names);
     }
 
-    var it = server_map.iterator();
-    while (it.next()) |kv| {
-        var inner_it = kv.value_ptr.iterator();
-        while (inner_it.next()) |inner_kv| {
-            core.allocator.free(inner_kv.key_ptr.*);
-        }
-        kv.value_ptr.deinit();
-    }
-    server_map.deinit();
-
-    it = client_map.iterator();
-    while (it.next()) |kv| {
-        var inner_it = kv.value_ptr.iterator();
-        while (inner_it.next()) |inner_kv| {
-            core.allocator.free(inner_kv.key_ptr.*);
-        }
-        kv.value_ptr.deinit();
-    }
-    client_map.deinit();
+    deinitMaps(&server_map);
+    deinitMaps(&client_map);
 }

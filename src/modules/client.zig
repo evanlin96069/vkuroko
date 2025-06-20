@@ -238,7 +238,7 @@ fn init() bool {
 
     origCFPSPanel__ShouldDraw = core.hook_manager.findAndHook(
         CFPSPanel__ShouldDrawFunc,
-        "client",
+        client_dll,
         CFPSPanel__ShouldDraw_patterns,
         hookedCFPSPanel__ShouldDraw,
     ) catch |e| blk: {
