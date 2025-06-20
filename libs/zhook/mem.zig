@@ -3,7 +3,6 @@ const builtin = @import("builtin");
 const testing = std.testing;
 
 const utils = @import("utils.zig");
-const windows = utils.windows;
 
 const isHex = utils.isHex;
 const makeHex = utils.makeHex;
@@ -197,83 +196,4 @@ pub fn setValue(T: type, ptr: [*]u8, value: T) void {
 test "Load value from memory" {
     const mem = makeHex("E9 B1 9A 78 56"); // jmp
     try testing.expectEqual(0x56789AB1, loadValue(u32, mem.ptr + 1));
-}
-
-pub fn getModule(comptime module_name: []const u8) ?[]const u8 {
-    return switch (builtin.os.tag) {
-        .windows => getModuleWindows(module_name),
-        .linux => getModuleLinux(module_name) catch return null,
-        else => @compileError("getModule is not available for this target"),
-    };
-}
-
-fn getModuleWindows(comptime module_name: []const u8) ?[]const u8 {
-    const dll_name = module_name ++ ".dll";
-    const path_w = std.unicode.utf8ToUtf16LeStringLiteral(dll_name);
-    const dll = windows.GetModuleHandleW(path_w) orelse return null;
-    var info: windows.MODULEINFO = undefined;
-    if (windows.GetModuleInformation(windows.GetCurrentProcess(), dll, &info, @sizeOf(windows.MODULEINFO)) == 0) {
-        return null;
-    }
-    const mem: [*]const u8 = @ptrCast(dll);
-    return mem[0..info.SizeOfImage];
-}
-
-fn getModuleLinux(comptime module_name: []const u8) !?[]const u8 {
-    const file_name = module_name ++ ".so";
-
-    const allocator = std.heap.page_allocator;
-    var file = try std.fs.openFileAbsolute("/proc/self/maps", .{ .mode = .read_only });
-    defer file.close();
-    var reader = file.reader();
-
-    var base: usize = 0;
-    var end: usize = 0;
-    var found = false;
-
-    while (try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', 4096)) |line| {
-        defer allocator.free(line);
-
-        // Example format:
-        // de228000-de229000 r--p 00000000 00:29 1026008    /usr/lib/libstdc++.so.6.0.33
-
-        if (!std.mem.endsWith(u8, line, file_name)) {
-            if (found) break;
-            continue;
-        }
-
-        const pos = line.len - file_name.len;
-        if (line[pos - 1] != '/' and line[pos - 1] != ' ') continue;
-
-        const dash = std.mem.indexOfScalar(u8, line, '-') orelse continue;
-        const space = std.mem.indexOfScalarPos(u8, line, dash + 1, ' ') orelse continue;
-
-        const perms_start = space + 1;
-        if (line.len < perms_start + 4) continue;
-        const read = line[perms_start];
-        const exec = line[perms_start + 2];
-        if (read == '-' or exec == '-') continue;
-
-        const start_hex = line[0..dash];
-        const end_hex = line[dash + 1 .. space];
-
-        const start_addr = try std.fmt.parseInt(usize, start_hex, 16);
-        const end_addr = try std.fmt.parseInt(usize, end_hex, 16);
-
-        if (!found) {
-            base = start_addr;
-            end = end_addr;
-            found = true;
-        } else if (start_addr == end) {
-            end = end_addr;
-        } else {
-            break;
-        }
-    }
-
-    if (!found) return null;
-
-    const size = end - base;
-    const ptr: [*]const u8 = @ptrFromInt(base);
-    return ptr[0..size];
 }

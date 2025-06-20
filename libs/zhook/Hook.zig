@@ -54,7 +54,7 @@ pub fn hookVMT(vt: [*]*const anyopaque, index: usize, target: *const anyopaque) 
     const entry_ptr: [*]u8 = @ptrCast(vt + index);
 
     const bytes = std.mem.toBytes(target);
-    try utils.patchCode(entry_ptr, &bytes);
+    try utils.patchCode(entry_ptr, &bytes, 0b001); // restore to read-only
 
     return Hook{
         .orig = orig,
@@ -65,17 +65,6 @@ pub fn hookVMT(vt: [*]*const anyopaque, index: usize, target: *const anyopaque) 
             },
         },
     };
-}
-
-fn isAddImm32(mem: [*]const u8) bool {
-    if (mem[0] != x86.Opcode.Op1.alumiw) return false;
-
-    const modrm = mem[1];
-    // mod must be 0b11  (register operand)
-    if ((modrm & 0b1100_0000) != 0b1100_0000) return false;
-    // reg/opcode must be 000 (ADD)
-    if ((modrm & 0b0011_1000) != 0b0000_0000) return false;
-    return true;
 }
 
 // Trampoline memory must have rwx permissions
@@ -133,10 +122,10 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
                     // Look for PIC pattern:
                     // call __i686.get_pc_thunk.reg
                     // add reg, imm32
-                    if (isAddImm32(mem + len + 5)) {
-                        const imm32 = loadValue(u32, mem + len + 7);
+                    if (utils.matchPIC(mem + len)) |off| {
+                        const imm32 = loadValue(u32, mem + len + off);
                         pic_patch = .{
-                            .offset = len + 7,
+                            .offset = len + off,
                             .orig = imm32,
                         };
                     }
@@ -198,7 +187,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
     const jmp2_offset: *align(1) u32 = @ptrCast(&detour[1]);
     jmp2_offset.* = @intFromPtr(target) -% @intFromPtr(mem + 5);
 
-    try utils.patchCode(mem, detour[0..]);
+    try utils.patchCode(mem, detour[0..], 0b101);
 
     if (builtin.os.tag == .linux) {
         if (pic_patch) |p| {
@@ -206,7 +195,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
             const new_value: u32 = p.orig -% delta;
 
             const bytes = std.mem.toBytes(new_value);
-            try utils.patchCode(mem + p.offset, &bytes);
+            try utils.patchCode(mem + p.offset, &bytes, 0b101);
         }
     }
 
@@ -227,18 +216,18 @@ pub fn unhook(self: *Hook) !void {
         .vmt => |v| {
             const entry_ptr: [*]u8 = @ptrCast(v.vt + v.index);
             const bytes = std.mem.toBytes(orig);
-            try utils.patchCode(entry_ptr, &bytes);
+            try utils.patchCode(entry_ptr, &bytes, 0b001); // restore to read-only
         },
         .detour => |v| {
             if (v.rel32_patch) |r| {
                 const orig_patch: *align(1) u32 = @ptrCast(v.trampoline.ptr + r.offset);
                 orig_patch.* = r.orig;
             }
-            try utils.patchCode(v.func, v.trampoline[0 .. v.trampoline.len - 5]);
+            try utils.patchCode(v.func, v.trampoline[0 .. v.trampoline.len - 5], 0b101);
             if (builtin.os.tag == .linux) {
                 if (v.pic_patch) |p| {
                     const bytes = std.mem.toBytes(p.orig);
-                    try utils.patchCode(v.func + p.offset, &bytes);
+                    try utils.patchCode(v.func + p.offset, &bytes, 0b101);
                 }
             }
         },

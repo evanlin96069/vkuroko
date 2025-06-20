@@ -2,6 +2,7 @@ const std = @import("std");
 
 const Hook = @import("Hook.zig");
 const mem = @import("mem.zig");
+const utils = @import("utils.zig");
 
 const HookManager = @This();
 
@@ -27,8 +28,7 @@ pub fn deinit(self: *HookManager) usize {
     return count;
 }
 
-pub fn findAndHook(self: *HookManager, T: type, comptime module_name: []const u8, patterns: []const []const ?u8, target: *const anyopaque) !T {
-    const module = mem.getModule(comptime module_name) orelse return error.ModuleNotFound;
+pub fn findAndHook(self: *HookManager, T: type, module: []const u8, patterns: []const []const ?u8, target: *const anyopaque) !T {
     const match = mem.scanUniquePatterns(module, patterns) orelse {
         return error.PatternNotFound;
     };
