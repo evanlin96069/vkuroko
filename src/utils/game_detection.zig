@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const zhook = @import("zhook");
 
@@ -48,19 +49,48 @@ fn findBuildNumber() ?i32 {
         build_num = calculateBuildNumber(engine_dll[offset + 20 .. offset + 31]);
     } else if (tier1.icvar.findCommand("version")) |version| {
         // Find build number via `version` command
-        const module_start = @intFromPtr(engine_dll.ptr);
-        const module_end = module_start + engine_dll.len;
+        const engine_range = zhook.utils.getEntireModule("engine") orelse return null;
+        const module_start = @intFromPtr(engine_range.ptr);
+        const module_end = module_start + engine_range.len;
 
-        const build_num_ptr_ptr: *const u8 = @ptrFromInt(@intFromPtr(version.command_callback) + 3);
-        if (@intFromPtr(build_num_ptr_ptr) >= module_start and
-            @intFromPtr(build_num_ptr_ptr) <= module_end)
-        {
-            const build_num_ptr: *const u8 = @as(*align(1) const *const u8, @ptrCast(build_num_ptr_ptr)).*;
-            if (@intFromPtr(build_num_ptr) >= module_start and
-                @intFromPtr(build_num_ptr) <= module_end)
-            {
-                build_num = @as(*align(1) const i32, @ptrCast(build_num_ptr)).*;
-            }
+        switch (builtin.os.tag) {
+            .windows => {
+                const build_num_ptr_ptr: *const u8 = @ptrFromInt(@intFromPtr(version.command_callback) + 3);
+                if (@intFromPtr(build_num_ptr_ptr) >= module_start and
+                    @intFromPtr(build_num_ptr_ptr) <= module_end)
+                {
+                    const build_num_ptr: *const u8 = @as(*align(1) const *const u8, @ptrCast(build_num_ptr_ptr)).*;
+                    if (@intFromPtr(build_num_ptr) >= module_start and
+                        @intFromPtr(build_num_ptr) <= module_end)
+                    {
+                        build_num = @as(*align(1) const i32, @ptrCast(build_num_ptr)).*;
+                    }
+                }
+            },
+            .linux => {
+                var GOT_addr: ?u32 = null;
+                const addr: [*]const u8 = @ptrCast(version.command_callback);
+                var p = addr;
+
+                while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
+                    return null;
+                })) {
+                    if (p[0] == zhook.x86.Opcode.Op1.call) {
+                        if (zhook.utils.matchPIC(p)) |off| {
+                            // imm32 from add
+                            const imm32 = zhook.mem.loadValue(u32, p + off);
+                            GOT_addr = @intFromPtr(p + 5) +% imm32;
+                        }
+                    } else if (p[0] == zhook.x86.Opcode.Op1.miscmw and p[1] == zhook.x86.modrm(0b10, 0b110, 0b011)) {
+                        if (GOT_addr) |base| {
+                            // imm32 from lea
+                            const imm32 = zhook.mem.loadValue(u32, p + 2);
+                            return @as(*i32, @ptrFromInt(base + imm32)).*;
+                        }
+                    }
+                }
+            },
+            else => unreachable,
         }
     }
 
