@@ -123,7 +123,7 @@ const FPSTextHUD = struct {
 
             const fps: u32 = @intFromFloat(average_fps);
             const frame_ms: f32 = frame_time * std.time.ms_per_s;
-            drawColorTextHUD(
+            drawColoredTextHUD(
                 getFPSColor(fps),
                 "{d: >3} fps ({d: >3}, {d: >3}) {d:.1} ms on {s}",
                 .{ fps, low, high, frame_ms, engine.client.getLevelName() },
@@ -131,7 +131,7 @@ const FPSTextHUD = struct {
         } else {
             average_fps = -1;
             const fps: u32 = @intFromFloat(1.0 / frame_time);
-            drawColorTextHUD(
+            drawColoredTextHUD(
                 getFPSColor(fps),
                 "{d: >3} fps on {s}",
                 .{ fps, engine.client.getLevelName() },
@@ -149,7 +149,7 @@ const FPSTextHUD = struct {
 };
 
 pub fn drawTextHUD(comptime fmt: []const u8, args: anytype) void {
-    drawColorTextHUD(
+    drawColoredTextHUD(
         .{
             .r = 255,
             .g = 255,
@@ -161,11 +161,15 @@ pub fn drawTextHUD(comptime fmt: []const u8, args: anytype) void {
     );
 }
 
-pub fn drawColorTextHUD(color: Color, comptime fmt: []const u8, args: anytype) void {
-    vgui.imatsystem.drawSetTextFont(font_DefaultFixedOutline);
-    vgui.imatsystem.drawSetTextColor(color);
-    vgui.imatsystem.drawSetTextPos(x + 2, y + 2 + offset * (font_DefaultFixedOutline_tall + 2));
-    vgui.imatsystem.drawPrintText(fmt, args);
+pub fn drawColoredTextHUD(color: Color, comptime fmt: []const u8, args: anytype) void {
+    vgui.imatsystem.drawColoredText(
+        font_DefaultFixedOutline,
+        x + 2,
+        y + 2 + offset * (font_DefaultFixedOutline_tall + 2),
+        color,
+        fmt,
+        args,
+    );
     offset += 1;
 }
 

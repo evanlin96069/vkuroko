@@ -95,18 +95,11 @@ const IMatSystemSurface = extern struct {
         const drawFilledRect: usize = 12;
         const drawOutlinedRect: usize = 14;
         const drawLine: usize = 15;
-        const drawSetTextFont: usize = 17;
-        const drawSetTextColor: usize = switch (builtin.os.tag) {
-            .windows => 18,
-            .linux => 19,
-            else => unreachable,
-        };
-        const drawSetTextPos: usize = 20;
-        const drawPrintText: usize = 22;
         var getScreenSize: usize = undefined;
         var getFontTall: usize = undefined;
         var getTextSize: usize = undefined;
         var drawOutlinedCircle: usize = undefined;
+        var drawColoredText: usize = undefined;
     };
 
     pub fn drawSetColor(self: *IMatSystemSurface, color: Color) void {
@@ -127,37 +120,6 @@ const IMatSystemSurface = extern struct {
     pub fn drawLine(self: *IMatSystemSurface, x0: i32, y0: i32, x1: i32, y1: i32) void {
         const _drawLine: *const fn (this: *anyopaque, x0: c_int, y0: c_int, x1: c_int, y1: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawLine]);
         _drawLine(self, x0, y0, x1, y1);
-    }
-
-    pub fn drawSetTextFont(self: *IMatSystemSurface, font: c_ulong) void {
-        const _drawSetTextFont: *const fn (this: *anyopaque, font: c_ulong) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetTextFont]);
-        _drawSetTextFont(self, font);
-    }
-
-    pub fn drawSetTextColor(self: *IMatSystemSurface, color: Color) void {
-        const _drawSetTextColor: *const fn (this: *anyopaque, color: Color) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetTextColor]);
-        _drawSetTextColor(self, color);
-    }
-
-    pub fn drawSetTextPos(self: *IMatSystemSurface, x: i32, y: i32) void {
-        const _drawSetTextPos: *const fn (this: *anyopaque, x: c_int, y: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetTextPos]);
-        _drawSetTextPos(self, x, y);
-    }
-
-    pub fn drawPrintText(self: *IMatSystemSurface, comptime fmt: []const u8, args: anytype) void {
-        const _drawPrintText: *const fn (this: *anyopaque, text: [*]u16, text_len: c_int, draw_type: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawPrintText]);
-
-        const text = std.fmt.allocPrint(core.allocator, fmt, args) catch {
-            return;
-        };
-        defer core.allocator.free(text);
-
-        const utf16_buf = std.unicode.utf8ToUtf16LeAlloc(core.allocator, text) catch {
-            return;
-        };
-        defer core.allocator.free(utf16_buf);
-
-        _drawPrintText(self, utf16_buf.ptr, @intCast(utf16_buf.len), 0);
     }
 
     pub fn getScreenSize(self: *IMatSystemSurface) struct { wide: i32, tall: i32 } {
@@ -181,6 +143,69 @@ const IMatSystemSurface = extern struct {
     pub fn drawOutlinedCircle(self: *IMatSystemSurface, x: i32, y: i32, radius: i32, segments: i32) void {
         const _drawOutlinedCircle: *const fn (this: *anyopaque, x: c_int, y: c_int, radius: c_int, segments: c_int) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawOutlinedCircle]);
         _drawOutlinedCircle(self, x, y, radius, segments);
+    }
+
+    pub fn drawText(
+        self: *IMatSystemSurface,
+        font: c_ulong,
+        x: i32,
+        y: i32,
+        comptime fmt: []const u8,
+        args: anytype,
+    ) void {
+        self.drawColoredText(
+            self,
+            font,
+            x,
+            y,
+            .{
+                .r = 255,
+                .g = 255,
+                .b = 255,
+                .a = 255,
+            },
+            fmt,
+            args,
+        );
+    }
+
+    pub fn drawColoredText(
+        self: *IMatSystemSurface,
+        font: c_ulong,
+        x: i32,
+        y: i32,
+        color: Color,
+        comptime fmt: []const u8,
+        args: anytype,
+    ) void {
+        const _drawColoredText: *const fn (
+            this: *anyopaque,
+            font: c_ulong,
+            x: c_int,
+            y: c_int,
+            r: c_int,
+            g: c_int,
+            b: c_int,
+            a: c_int,
+            fmt: [*:0]const u8,
+            ...,
+        ) callconv(.C) c_int = @ptrCast(self._vt[VTIndex.drawColoredText]);
+
+        const text = std.fmt.allocPrintZ(core.allocator, fmt, args) catch return;
+        defer core.allocator.free(text);
+
+        _ = _drawColoredText(
+            self,
+            font,
+            x,
+            y,
+            color.r,
+            color.g,
+            color.b,
+            color.a,
+            "%s",
+            text.ptr,
+        );
     }
 };
 
@@ -238,6 +263,7 @@ fn init() bool {
             IMatSystemSurface.VTIndex.getFontTall = 67;
             IMatSystemSurface.VTIndex.getTextSize = 72;
             IMatSystemSurface.VTIndex.drawOutlinedCircle = 96;
+            IMatSystemSurface.VTIndex.drawColoredText = 138;
             IPanel.VTIndex.getName = 35 + abi.dtor_adjust;
             IPanel.VTIndex.paintTraverse = 40 + abi.dtor_adjust;
         },
@@ -246,6 +272,7 @@ fn init() bool {
             IMatSystemSurface.VTIndex.getFontTall = 69;
             IMatSystemSurface.VTIndex.getTextSize = 75;
             IMatSystemSurface.VTIndex.drawOutlinedCircle = 99;
+            IMatSystemSurface.VTIndex.drawColoredText = 162;
             IPanel.VTIndex.getName = 36 + abi.dtor_adjust;
             IPanel.VTIndex.paintTraverse = 41 + abi.dtor_adjust;
         },

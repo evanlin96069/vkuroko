@@ -55,7 +55,7 @@ const IBaseClientDLL = extern struct {
                 while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
                     return null;
                 })) {
-                    if (p[0] == zhook.x86.Opcode.Op1.movrmw and p[1] == zhook.x86.modrm(0, 1, 5)) {
+                    if (p[0] == zhook.x86.Opcode.Op1.movrmw and p[1] == zhook.x86.modrm(0b00, 0b001, 0b101)) {
                         return zhook.mem.loadValue(**IInput, p + 2).*;
                     }
                 }
@@ -71,7 +71,7 @@ const IBaseClientDLL = extern struct {
                             const imm32 = zhook.mem.loadValue(u32, p + off);
                             GOT_addr = @intFromPtr(p + 5) +% imm32;
                         }
-                    } else if (p[0] == zhook.x86.Opcode.Op1.lea) {
+                    } else if (p[0] == zhook.x86.Opcode.Op1.lea and p[1] == zhook.x86.modrm(0b10, 0b000, 0b000)) {
                         if (GOT_addr) |base| {
                             // imm32 from lea
                             const imm32 = zhook.mem.loadValue(u32, p + 2);
@@ -221,17 +221,18 @@ fn init() bool {
 
     const GetDamagePosition_match = zhook.mem.scanUniquePatterns(client_dll, GetDamagePosition_patterns);
     if (GetDamagePosition_match) |match| {
-        switch (match.index) {
-            0 => {
-                mainViewOrigin = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 8) +% zhook.mem.loadValue(u32, match.ptr + 4))));
-                mainViewAngles = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 13) +% zhook.mem.loadValue(u32, match.ptr + 9))));
+        const call1_offset: u32 = switch (builtin.os.tag) {
+            .windows => switch (match.index) {
+                0 => 3,
+                1 => 9,
+                else => unreachable,
             },
-            1 => {
-                mainViewOrigin = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 14) +% zhook.mem.loadValue(u32, match.ptr + 10))));
-                mainViewAngles = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + 19) +% zhook.mem.loadValue(u32, match.ptr + 15))));
-            },
+            .linux => 22,
             else => unreachable,
-        }
+        };
+        const call2_offset: u32 = call1_offset + 5;
+        mainViewOrigin = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + call1_offset + 5) +% zhook.mem.loadValue(u32, match.ptr + call1_offset + 1))));
+        mainViewAngles = @ptrCast(@as(*u8, @ptrFromInt(@intFromPtr(match.ptr + call2_offset + 5) +% zhook.mem.loadValue(u32, match.ptr + call2_offset + 1))));
     } else {
         core.log.warn("Failed to find CHudDamageIndicator::GetDamagePosition", .{});
     }
