@@ -7,15 +7,22 @@ A Source Engine plugin that integrates [Kuroko](https://github.com/kuroko-lang/k
 More bindings and TAS support are still being developed.
 
 ## Supported Games
+
+### Windows
 - Portal (3420)
 - Portal (4104)
 - Portal (5135)
-- Portal (latest) [Load via addons]
+- Portal (latest)*
 - Half-Life 2 (5135)
-- Half-Life 2 (latest) [Load via addons]
+- Half-Life 2 (latest)*
+
+### Linux
+- Portal (latest)*
+- Half-Life 2 (latest)*
+
+\* Due to https://github.com/ValveSoftware/Source-1-Games/issues/3632, plugin has to load via `addons` on latest version of the game.
 
 ## Build
-Linux and Windows support.
 
 Use [zig 0.14.1](https://ziglang.org/download/#release-0.14.1)
 
@@ -25,7 +32,7 @@ The currently running platform is the default build target:
 zig build
 ```
 
-Building for a specific platform other than the currently running platform:
+Building for a specific platform:
 
 ```sh
 # Windows
@@ -34,4 +41,3 @@ zig build -Dtarget=windows
 zig build -Dtarget=linux
 ```
 
-If cross-compiling from Linux to Windows and vice versa, you must have the correct compilers.
