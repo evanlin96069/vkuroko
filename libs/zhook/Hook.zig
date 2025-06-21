@@ -82,6 +82,8 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
 
     var len: usize = 0;
     while (true) : (len += try x86.x86_len(mem + len)) {
+        if (len >= 5) break;
+
         // No checks for rel16 at all. I don't think we will encounter them.
         const op0 = mem[len];
         switch (op0) {
@@ -164,7 +166,6 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
             },
             else => {},
         }
-        if (len >= 5) break;
     }
 
     const trampoline_size = len + 5;
