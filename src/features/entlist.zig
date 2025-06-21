@@ -137,9 +137,9 @@ fn EntityList(comptime is_server: bool) type {
                     if (class_ptr_ptr.*) |class_ptr| {
                         return class_ptr.getName();
                     }
-                    std.log.info("ServerClass is null", .{});
+                    std.log.debug("getNetworkClassName: ServerClass is null", .{});
                 } else {
-                    std.log.info("Cannot find ServerClass", .{});
+                    std.log.debug("getNetworkClassName: Cannot find ServerClass", .{});
                 }
                 return "";
             } else {
