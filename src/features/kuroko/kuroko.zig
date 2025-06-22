@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const Feature = @import("../Feature.zig");
 
@@ -176,7 +177,7 @@ var stderr: *std.c.FILE = undefined;
 fn init() bool {
     krk_path = @ptrCast((std.fmt.bufPrint(
         &path_buf,
-        "{s}\\kuroko\\",
+        if (builtin.os.tag == .windows) "{s}\\kuroko\\" else "{s}/kuroko/",
         .{engine.client.getGameDirectory()},
     ) catch return false).ptr);
 

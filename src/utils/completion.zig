@@ -161,7 +161,7 @@ pub const FileCompletion = struct {
 
             const path = try std.fmt.allocPrint(
                 core.allocator,
-                "{s}/{s}{s}{s}/*.*",
+                "{s}/{s}{s}{s}/" ++ if (builtin.os.tag == .windows) "*.*" else "",
                 .{
                     engine.client.getGameDirectory(),
                     self.base_path,
@@ -216,11 +216,9 @@ pub const FileCompletion = struct {
                     const name = entry.basename;
                     switch (entry.kind) {
                         .directory => {
-                            if (!std.mem.eql(u8, name, ".") or std.mem.eql(u8, name, "..")) {
-                                const s = try std.fmt.allocPrint(core.allocator, "{s}/", .{name});
-                                errdefer core.allocator.free(s);
-                                try self.cache.append(s);
-                            }
+                            const s = try std.fmt.allocPrint(core.allocator, "{s}/", .{name});
+                            errdefer core.allocator.free(s);
+                            try self.cache.append(s);
                         },
                         .file => {
                             if (std.mem.endsWith(u8, name, self.file_extension)) {
