@@ -8,12 +8,16 @@ const interfaces = @import("../interfaces.zig");
 const core = @import("../core.zig");
 const event = @import("../event.zig");
 
+const game_detection = @import("../utils/game_detection.zig");
+
 const zhook = @import("zhook");
 
 const Module = @import("Module.zig");
 
 const Color = sdk.Color;
 const VCallConv = abi.VCallConv;
+const CUtlVector = sdk.CUtlVector;
+const CFontAmalgam = sdk.CFontAmalgam;
 
 pub var module: Module = .{
     .name = "vgui",
@@ -263,7 +267,15 @@ fn init() bool {
             IMatSystemSurface.VTIndex.getFontTall = 67;
             IMatSystemSurface.VTIndex.getTextSize = 72;
             IMatSystemSurface.VTIndex.drawOutlinedCircle = 96;
-            IMatSystemSurface.VTIndex.drawColoredText = 138;
+
+            IMatSystemSurface.VTIndex.drawColoredText = if (@import("root").ifacever == 2) 134 else 138;
+            // 4104 uses 134, but has ifacever = 3
+            // We can just check the build number, but I also want it to work on leaked build
+            if (game_detection.getBuildNumber()) |n| {
+                if (n <= 4104) {
+                    IMatSystemSurface.VTIndex.drawColoredText = 134;
+                }
+            }
             IPanel.VTIndex.getName = 35 + abi.dtor_adjust;
             IPanel.VTIndex.paintTraverse = 40 + abi.dtor_adjust;
         },

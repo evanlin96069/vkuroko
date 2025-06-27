@@ -24,6 +24,8 @@ pub const std_options: std.Options = .{
 
 pub const panic = std.debug.FullPanic(@import("panic.zig").panicFn);
 
+pub var ifacever: u8 = undefined;
+
 var plugin_loaded: bool = false;
 var should_defer_load: bool = false;
 var skip_unload: bool = false;
@@ -202,6 +204,14 @@ fn onQueryCvarValueFinished(
     _ = cookie;
 }
 
+fn onEdictAllocated(_: *anyopaque, edict: *anyopaque) callconv(VCallConv) void {
+    _ = edict;
+}
+
+fn onEdictFreed(_: *anyopaque, edict: *const anyopaque) callconv(VCallConv) void {
+    _ = edict;
+}
+
 const vt_IServerPluginCallbacks = [_]*const anyopaque{
     &load,
     &unload,
@@ -221,6 +231,8 @@ const vt_IServerPluginCallbacks = [_]*const anyopaque{
     &clientCommand,
     &networkIdValidated,
     &onQueryCvarValueFinished,
+    &onEdictAllocated,
+    &onEdictFreed,
 };
 
 pub const plugin: IServerPluginCallbacks = .{
@@ -228,9 +240,13 @@ pub const plugin: IServerPluginCallbacks = .{
 };
 
 export fn CreateInterface(name: [*:0]u8, ret: ?*c_int) ?*const IServerPluginCallbacks {
-    if (std.mem.eql(u8, std.mem.span(name), "ISERVERPLUGINCALLBACKS002")) {
-        if (ret) |r| r.* = 0;
-        return &plugin;
+    if (std.mem.startsWith(u8, std.mem.span(name), "ISERVERPLUGINCALLBACKS00")) {
+        if (name[24] >= '2' and name[24] <= '3' and name[25] == 0) {
+            ifacever = name[24] - '0';
+
+            if (ret) |r| r.* = 0;
+            return &plugin;
+        }
     }
 
     if (ret) |r| r.* = 1;
