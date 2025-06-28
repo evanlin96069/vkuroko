@@ -20,25 +20,19 @@ pub var feature: Feature = .{
     .deinit = deinit,
 };
 
-var vkrk_hud_debug = tier1.Variable.init(.{
-    .name = "vkrk_hud_debug",
-    .flags = .{
-        .hidden = true,
-    },
+var vkrk_debug_hud = tier1.Variable.init(.{
+    .name = "vkrk_debug_hud",
     .help_string = "Draw test HUD.",
     .default_value = "0",
 });
 
-var vkrk_cmd_debug = tier1.ConCommand.init(.{
-    .name = "vkrk_cmd_debug",
-    .flags = .{
-        .hidden = true,
-    },
+var vkrk_debug_cmd = tier1.ConCommand.init(.{
+    .name = "vkrk_debug_cmd",
     .help_string = "For debuging CCommand.",
-    .command_callback = cmd_debug_Fn,
+    .command_callback = debug_cmd_Fn,
 });
 
-fn cmd_debug_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn debug_cmd_Fn(args: *const tier1.CCommand) callconv(.C) void {
     std.log.info("argc = {d}", .{args.argc});
     std.log.info("argv_0_size = {d}", .{args.argv_0_size});
     std.log.info("args_buffer = \"{s}\"", .{args.args_buffer});
@@ -58,7 +52,7 @@ fn shouldLoad() bool {
 }
 
 fn onPaint() void {
-    if (vkrk_hud_debug.getBool()) {
+    if (vkrk_debug_hud.getBool()) {
         const screen = vgui.imatsystem.getScreenSize();
         const cols = 8;
         const rows = 8;
@@ -91,8 +85,8 @@ fn onPaint() void {
 }
 
 fn init() bool {
-    vkrk_hud_debug.register();
-    vkrk_cmd_debug.register();
+    vkrk_debug_hud.register();
+    vkrk_debug_cmd.register();
 
     event.paint.connect(onPaint);
 
