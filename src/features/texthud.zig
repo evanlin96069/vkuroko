@@ -10,7 +10,9 @@ const vgui = modules.vgui;
 
 const event = @import("../event.zig");
 
-const Color = @import("sdk").Color;
+const sdk = @import("sdk");
+const Color = sdk.Color;
+const HFont = sdk.HFont;
 
 const Feature = @import("Feature.zig");
 
@@ -21,20 +23,68 @@ pub var feature: Feature = .{
     .deinit = deinit,
 };
 
+var vkrk_hud = tier1.Variable.init(.{
+    .name = "vkrk_hud",
+    .help_string = "Draw text HUD.",
+    .flags = .{
+        .dont_record = true,
+    },
+    .default_value = "1",
+});
+
 var vkrk_hud_x = tier1.Variable.init(.{
     .name = "vkrk_hud_x",
     .help_string = "The X position for the text HUD.",
+    .flags = .{
+        .dont_record = true,
+    },
     .default_value = "-300",
 });
 
 var vkrk_hud_y = tier1.Variable.init(.{
     .name = "vkrk_hud_y",
     .help_string = "The Y position for the text HUD.",
+    .flags = .{
+        .dont_record = true,
+    },
     .default_value = "0",
 });
 
-var font_DefaultFixedOutline: c_ulong = 0;
-var font_DefaultFixedOutline_tall: c_int = 0;
+var vkrk_hud_font_index = tier1.Variable.init(.{
+    .name = "vkrk_hud_font_index",
+    .help_string = "Font index for the text HUD.",
+    .flags = .{
+        .dont_record = true,
+    },
+    .default_value = "0",
+});
+
+var vkrk_font_list = tier1.ConCommand.init(.{
+    .name = "vkrk_font_list",
+    .flags = .{},
+    .help_string = "List all available fonts.",
+    .command_callback = font_list_Fn,
+});
+
+fn font_list_Fn(args: *const tier1.CCommand) callconv(.C) void {
+    _ = args;
+    const font_count = vgui.FontManager.getFontCount();
+    var i: u32 = 0;
+    while (i < font_count) : (i += 1) {
+        if (vgui.FontManager.isValidFond(i)) {
+            if (vgui.FontManager.getFontName(i)) |name| {
+                const font_index = @as(i32, @intCast(i)) - @as(i32, @intCast(font_DefaultFixedOutline));
+                std.log.info("{d}: {s}, size={d}", .{
+                    font_index,
+                    name,
+                    vgui.imatsystem.getFontTall(i),
+                });
+            }
+        }
+    }
+}
+
+var font_DefaultFixedOutline: HFont = 0;
 
 var x: i32 = 0;
 var y: i32 = 0;
@@ -162,10 +212,16 @@ pub fn drawTextHUD(comptime fmt: []const u8, args: anytype) void {
 }
 
 pub fn drawColoredTextHUD(color: Color, comptime fmt: []const u8, args: anytype) void {
+    const font: HFont = if (vgui.FontManager.canGetFontName())
+        @intCast(vkrk_hud_font_index.getInt() + @as(i32, @intCast(font_DefaultFixedOutline)))
+    else
+        font_DefaultFixedOutline;
+    const font_tall = vgui.imatsystem.getFontTall(font);
+
     vgui.imatsystem.drawColoredText(
-        font_DefaultFixedOutline,
+        font,
         x + 2,
-        y + 2 + offset * (font_DefaultFixedOutline_tall + 2),
+        y + 2 + offset * (font_tall + 2),
         color,
         fmt,
         args,
@@ -185,9 +241,8 @@ pub fn addHUDElement(element: HUDElement) void {
 }
 
 fn onPaint() void {
-    if (!engine.client.isInGame()) {
-        return;
-    }
+    if (!engine.client.isInGame()) return;
+    if (!vkrk_hud.getBool()) return;
 
     const screen = vgui.imatsystem.getScreenSize();
 
@@ -218,12 +273,17 @@ fn init() bool {
     hud_elements = std.ArrayList(HUDElement).init(core.allocator);
 
     font_DefaultFixedOutline = vgui.ischeme.getFont("DefaultFixedOutline", false);
-    font_DefaultFixedOutline_tall = vgui.imatsystem.getFontTall(font_DefaultFixedOutline);
 
     event.paint.connect(onPaint);
 
+    vkrk_hud.register();
     vkrk_hud_x.register();
     vkrk_hud_y.register();
+
+    if (vgui.FontManager.canGetFontName()) {
+        vkrk_hud_font_index.register();
+        vkrk_font_list.register();
+    }
 
     if (client.origCFPSPanel__ShouldDraw != null) {
         FPSTextHUD.register();

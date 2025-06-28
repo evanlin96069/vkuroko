@@ -17,9 +17,11 @@ pub fn CUtlVector(T: anytype) type {
     return extern struct {
         memory: CUtlMemory(T),
         size: c_uint,
-        element: [*]T,
+        elements: [*]T,
     };
 }
+
+pub const CUtlSymbol = c_ushort;
 
 pub const IServerPluginCallbacks = extern struct {
     _vt: *align(@alignOf(*anyopaque)) const anyopaque,
@@ -393,7 +395,7 @@ pub const ITraceFilter = extern struct {
 };
 
 pub const CUserCmd = extern struct {
-    vt: *anyopaque,
+    _vt: *anyopaque,
     command_number: c_int,
     tick_count: c_int,
     view_angles: QAngle,
@@ -441,4 +443,41 @@ pub const CMoveData = extern struct {
     constraint_speed_factor: f32,
 
     abs_origin: Vector,
+};
+
+pub const HScheme = c_ulong;
+pub const HFont = c_ulong;
+
+pub const CFontAmalgam = extern struct {
+    const TFontRange = extern struct {
+        low_range: c_int,
+        high_range: c_int,
+        font: *font_t,
+    };
+
+    fonts: CUtlVector(TFontRange),
+    name: [32]u8,
+    max_width: c_int,
+    max_height: c_int,
+};
+
+const font_t = switch (builtin.os.tag) {
+    .windows => CWin32Font,
+    .linux => CLinuxFont,
+    else => unreachable,
+};
+
+pub const CWin32Font = extern struct {
+    _vt: *anyopaque,
+    font: *anyopaque,
+    dc: *anyopaque,
+    dib: *anyopaque,
+    buf: [*]u8,
+    name: CUtlSymbol,
+    // more, but we don't care
+};
+
+pub const CLinuxFont = extern struct {
+    name: [*:0]u8,
+    // more, but we don't care
 };

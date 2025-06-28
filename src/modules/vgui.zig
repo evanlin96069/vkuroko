@@ -17,6 +17,8 @@ const Module = @import("Module.zig");
 const Color = sdk.Color;
 const VCallConv = abi.VCallConv;
 const CUtlVector = sdk.CUtlVector;
+const HScheme = sdk.HScheme;
+const HFont = sdk.HFont;
 const CFontAmalgam = sdk.CFontAmalgam;
 
 pub var module: Module = .{
@@ -103,8 +105,30 @@ const IMatSystemSurface = extern struct {
         var getFontTall: usize = undefined;
         var getTextSize: usize = undefined;
         var drawOutlinedCircle: usize = undefined;
+        var getFontName: ?usize = null;
         var drawColoredText: usize = undefined;
     };
+
+    fn findFontAmalgams(self: *IMatSystemSurface) ?*CUtlVector(CFontAmalgam) {
+        var FontManagerFunc: ?*const fn () *CUtlVector(CFontAmalgam) = null;
+
+        const addr: [*]const u8 = @ptrCast(self._vt[VTIndex.getFontTall]);
+        var p = addr;
+        while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
+            return null;
+        })) {
+            if (p[0] == zhook.x86.Opcode.Op1.call) {
+                const offset = zhook.mem.loadValue(u32, p + 1);
+                FontManagerFunc = @ptrFromInt(@intFromPtr(p + 5) +% offset);
+                break;
+            }
+        }
+
+        if (FontManagerFunc) |f| {
+            return f();
+        }
+        return null;
+    }
 
     pub fn drawSetColor(self: *IMatSystemSurface, color: Color) void {
         const _drawSetColor: *const fn (this: *anyopaque, color: Color) callconv(VCallConv) void = @ptrCast(self._vt[VTIndex.drawSetColor]);
@@ -139,8 +163,8 @@ const IMatSystemSurface = extern struct {
         };
     }
 
-    pub fn getFontTall(self: *IMatSystemSurface, font: c_ulong) c_int {
-        const _getFontTall: *const fn (this: *anyopaque, font: c_ulong) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.getFontTall]);
+    pub fn getFontTall(self: *IMatSystemSurface, font: HFont) c_int {
+        const _getFontTall: *const fn (this: *anyopaque, font: HFont) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.getFontTall]);
         return _getFontTall(self, font);
     }
 
@@ -149,9 +173,18 @@ const IMatSystemSurface = extern struct {
         _drawOutlinedCircle(self, x, y, radius, segments);
     }
 
+    fn getFontName(self: *IMatSystemSurface, font: HFont) ?[*:0]const u8 {
+        if (VTIndex.getFontName) |index| {
+            const _getFontName: *const fn (this: *anyopaque, font: HFont) callconv(VCallConv) [*:0]const u8 = @ptrCast(self._vt[index]);
+            return _getFontName(self, font);
+        }
+
+        return null;
+    }
+
     pub fn drawText(
         self: *IMatSystemSurface,
-        font: c_ulong,
+        font: HFont,
         x: i32,
         y: i32,
         comptime fmt: []const u8,
@@ -175,7 +208,7 @@ const IMatSystemSurface = extern struct {
 
     pub fn drawColoredText(
         self: *IMatSystemSurface,
-        font: c_ulong,
+        font: HFont,
         x: i32,
         y: i32,
         color: Color,
@@ -184,7 +217,7 @@ const IMatSystemSurface = extern struct {
     ) void {
         const _drawColoredText: *const fn (
             this: *anyopaque,
-            font: c_ulong,
+            font: HFont,
             x: c_int,
             y: c_int,
             r: c_int,
@@ -221,13 +254,13 @@ const ISchemeManager = extern struct {
         const getIScheme: usize = 8 + abi.dtor_adjust;
     };
 
-    fn getDefaultScheme(self: *ISchemeManager) c_ulong {
-        const _getDefaultScheme: *const fn (this: *anyopaque) callconv(VCallConv) c_ulong = @ptrCast(self._vt[VTIndex.getDefaultScheme]);
+    fn getDefaultScheme(self: *ISchemeManager) HScheme {
+        const _getDefaultScheme: *const fn (this: *anyopaque) callconv(VCallConv) HScheme = @ptrCast(self._vt[VTIndex.getDefaultScheme]);
         return _getDefaultScheme(self);
     }
 
-    fn getIScheme(self: *ISchemeManager, font: c_ulong) ?*IScheme {
-        const _getIScheme: *const fn (this: *anyopaque, font: c_ulong) callconv(VCallConv) ?*IScheme = @ptrCast(self._vt[VTIndex.getIScheme]);
+    fn getIScheme(self: *ISchemeManager, font: HFont) ?*IScheme {
+        const _getIScheme: *const fn (this: *anyopaque, font: HFont) callconv(VCallConv) ?*IScheme = @ptrCast(self._vt[VTIndex.getIScheme]);
         return _getIScheme(self, font);
     }
 };
@@ -239,9 +272,82 @@ const IScheme = extern struct {
         const getFont: usize = 3 + abi.dtor_adjust;
     };
 
-    pub fn getFont(self: *IScheme, name: [*:0]const u8, proportional: bool) c_ulong {
-        const _getFont: *const fn (this: *anyopaque, name: [*:0]const u8, proportional: bool) callconv(VCallConv) c_ulong = @ptrCast(self._vt[VTIndex.getFont]);
+    pub fn getFont(self: *IScheme, name: [*:0]const u8, proportional: bool) HFont {
+        const _getFont: *const fn (this: *anyopaque, name: [*:0]const u8, proportional: bool) callconv(VCallConv) HFont = @ptrCast(self._vt[VTIndex.getFont]);
         return _getFont(self, name, proportional);
+    }
+};
+
+pub const FontManager = struct {
+    pub var font_amalgamas: ?*CUtlVector(CFontAmalgam) = null;
+
+    pub fn canGetFontName() bool {
+        if (font_amalgamas == null) return false;
+        if (IMatSystemSurface.VTIndex.getFontName == null) {
+            return switch (builtin.os.tag) {
+                .windows => CUtlSymbol__String != null,
+                .linux => true,
+                else => unreachable,
+            };
+        }
+        return true;
+    }
+
+    pub fn getFontCount() u32 {
+        if (font_amalgamas) |fonts| {
+            return fonts.size;
+        }
+        return 0;
+    }
+
+    pub fn getFontName(font: HFont) ?[*:0]const u8 {
+        if (!canGetFontName()) return null;
+
+        if (IMatSystemSurface.VTIndex.getFontName != null) {
+            return imatsystem.getFontName(font);
+        }
+
+        if (!FontManager.isValidFond(font)) return null;
+        if (FontManager.font_amalgamas.?.elements[font].fonts.size == 0) return null;
+
+        const vgui_font = FontManager.font_amalgamas.?.elements[font].fonts.elements[0].font;
+        return switch (builtin.os.tag) {
+            .windows => if (CUtlSymbol__String) |stringFn|
+                stringFn(&vgui_font.name)
+            else
+                null,
+            .linux => vgui_font.name,
+            else => unreachable,
+        };
+    }
+
+    pub fn isValidFond(font: HFont) bool {
+        if (font_amalgamas == null) return false;
+        if (font >= font_amalgamas.?.size) return false;
+        return font_amalgamas.?.elements[font].fonts.size > 0;
+    }
+
+    pub fn findFont(font_name: []const u8, size: u32) !HFont {
+        if (!canGetFontName()) return error.FontFailed;
+
+        var found_name = false;
+        var i: u32 = 0;
+        while (i < font_amalgamas.?.size) : (i += 1) {
+            if (isValidFond(i)) {
+                const name = FontManager.getFontName(i);
+                if (std.mem.eql(u8, font_name, std.mem.span(name))) {
+                    found_name = true;
+                    if (size == font_amalgamas.?.elements[i].max_height) {
+                        return i;
+                    }
+                }
+            }
+        }
+
+        if (found_name) {
+            return error.SizeNotFound;
+        }
+        return error.NameNotFound;
     }
 };
 
@@ -255,7 +361,18 @@ pub fn getEngineVGui() ?*IEngineVGui {
     return @ptrCast(interfaces.engineFactory("VEngineVGui001", null));
 }
 
+// Windows 5135
+const CUtlSymbol__String_patterns = zhook.mem.makePattern("51 66 8B 09 8B C4");
+var CUtlSymbol__String: ?*const fn (this: *sdk.CUtlSymbol) callconv(.Thiscall) [*:0]const u8 = null;
+
+pub var vgui_dll: []const u8 = undefined;
+
 fn init() bool {
+    vgui_dll = zhook.utils.getModule("vguimatsurface") orelse blk: {
+        core.log.warn("Failed to get vguimatsurface module", .{});
+        break :blk "";
+    };
+
     const imatsystem_info = interfaces.create(interfaces.engineFactory, "MatSystemSurface", .{ 6, 8 }) orelse {
         core.log.err("Failed to get IMatSystem interface", .{});
         return false;
@@ -267,7 +384,6 @@ fn init() bool {
             IMatSystemSurface.VTIndex.getFontTall = 67;
             IMatSystemSurface.VTIndex.getTextSize = 72;
             IMatSystemSurface.VTIndex.drawOutlinedCircle = 96;
-
             IMatSystemSurface.VTIndex.drawColoredText = if (@import("root").ifacever == 2) 134 else 138;
             // 4104 uses 134, but has ifacever = 3
             // We can just check the build number, but I also want it to work on leaked build
@@ -276,6 +392,7 @@ fn init() bool {
                     IMatSystemSurface.VTIndex.drawColoredText = 134;
                 }
             }
+
             IPanel.VTIndex.getName = 35 + abi.dtor_adjust;
             IPanel.VTIndex.paintTraverse = 40 + abi.dtor_adjust;
         },
@@ -284,7 +401,9 @@ fn init() bool {
             IMatSystemSurface.VTIndex.getFontTall = 69;
             IMatSystemSurface.VTIndex.getTextSize = 75;
             IMatSystemSurface.VTIndex.drawOutlinedCircle = 99;
+            IMatSystemSurface.VTIndex.getFontName = 130;
             IMatSystemSurface.VTIndex.drawColoredText = 162;
+
             IPanel.VTIndex.getName = 36 + abi.dtor_adjust;
             IPanel.VTIndex.paintTraverse = 41 + abi.dtor_adjust;
         },
@@ -310,6 +429,21 @@ fn init() bool {
         core.log.err("Failed to get IPanel interface", .{});
         return false;
     });
+
+    FontManager.font_amalgamas = imatsystem.findFontAmalgams();
+    if (FontManager.font_amalgamas == null) {
+        core.log.warn("Failed find FontManager", .{});
+    } else if (builtin.os.tag == .windows and IMatSystemSurface.VTIndex.getFontName == null) {
+        if (zhook.mem.scanUnique(vgui_dll, CUtlSymbol__String_patterns)) |offset| {
+            CUtlSymbol__String = @ptrCast(vgui_dll.ptr + offset);
+        } else {
+            core.log.warn("Failed to find CUtlSymbol::String", .{});
+        }
+    }
+
+    if (!FontManager.canGetFontName()) {
+        core.log.warn("FontManager won't be able to get font name", .{});
+    }
 
     IPanel.origPaintTraverse = core.hook_manager.hookVMT(
         IPanel.PaintTraverseFunc,
