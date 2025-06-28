@@ -212,10 +212,14 @@ pub fn drawTextHUD(comptime fmt: []const u8, args: anytype) void {
 }
 
 pub fn drawColoredTextHUD(color: Color, comptime fmt: []const u8, args: anytype) void {
-    const font: HFont = if (vgui.FontManager.canGetFontName())
-        @intCast(vkrk_hud_font_index.getInt() + @as(i32, @intCast(font_DefaultFixedOutline)))
-    else
-        font_DefaultFixedOutline;
+    var font: HFont = font_DefaultFixedOutline;
+    if (vgui.FontManager.canGetFontName()) {
+        const i_font = vkrk_hud_font_index.getInt() + @as(i32, @intCast(font_DefaultFixedOutline));
+        if (i_font >= 0 and vgui.FontManager.isValidFond(@intCast(i_font))) {
+            font = @intCast(i_font);
+        }
+    }
+
     const font_tall = vgui.imatsystem.getFontTall(font);
 
     vgui.imatsystem.drawColoredText(
