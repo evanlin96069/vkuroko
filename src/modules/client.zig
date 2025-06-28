@@ -161,10 +161,13 @@ const GetDamagePosition_patterns = zhook.mem.makePatterns(switch (builtin.os.tag
 pub var mainViewOrigin: ?*const fn () callconv(.C) *const Vector = null;
 pub var mainViewAngles: ?*const fn () callconv(.C) *const QAngle = null;
 
-pub var client_dll: []const u8 = undefined;
+pub var client_dll: []const u8 = "";
 
 fn init() bool {
-    client_dll = zhook.utils.getModule("client") orelse return false;
+    client_dll = zhook.utils.getModule("client") orelse blk: {
+        core.log.warn("Failed to get client module", .{});
+        break :blk "";
+    };
 
     const clientFactory = interfaces.getFactory("client") orelse {
         core.log.err("Failed to get client interface factory", .{});

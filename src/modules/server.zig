@@ -259,12 +259,15 @@ pub fn canTracePlayerBBox() bool {
         CGameMovement.origTracePlayerBBoxForGroundV2 != null;
 }
 
-pub var server_dll: []const u8 = undefined;
+pub var server_dll: []const u8 = "";
 
 pub var gm: *CGameMovement = undefined;
 
 fn init() bool {
-    server_dll = zhook.utils.getModule("server") orelse return false;
+    server_dll = zhook.utils.getModule("server") orelse blk: {
+        core.log.warn("Failed to get server module", .{});
+        break :blk "";
+    };
 
     gm = @ptrCast(interfaces.serverFactory("GameMovement001", null) orelse {
         core.log.err("Failed to get IGameMovement interface", .{});

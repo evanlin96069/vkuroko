@@ -41,7 +41,7 @@ fn getPluginIndex() ?u32 {
     const plugin_addr = @intFromPtr(&main.plugin);
     var i: u32 = 0;
     while (i < plugin_helper.plugins.size) : (i += 1) {
-        if (@intFromPtr(plugin_helper.plugins.element[i].plugin) == plugin_addr) {
+        if (@intFromPtr(plugin_helper.plugins.elements[i].plugin) == plugin_addr) {
             return i;
         }
     }
@@ -191,7 +191,10 @@ pub var trace_client: *IEngineTrace = undefined;
 pub var plugin_helper: *sdk.CServerPlugin = undefined;
 
 fn init() bool {
-    engine_dll = zhook.utils.getModule("engine") orelse return false;
+    engine_dll = zhook.utils.getModule("engine") orelse blk: {
+        core.log.warn("Failed to get engine module", .{});
+        break :blk "";
+    };
 
     server = @ptrCast(interfaces.engineFactory("VEngineServer021", null) orelse {
         core.log.err("Failed to get IVEngineServer interface", .{});
