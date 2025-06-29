@@ -56,7 +56,7 @@ const IPanel = extern struct {
                 S.panel_id = vgui_panel;
                 S.found_panel_id = true;
             }
-        } else if (S.panel_id == vgui_panel) {
+        } else if (S.panel_id == vgui_panel and force_repaint) {
             event.paint.emit(.{});
         }
     }

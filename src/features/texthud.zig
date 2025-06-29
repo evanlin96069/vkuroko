@@ -94,10 +94,18 @@ var offset: i32 = 0;
 const FPSTextHUD = struct {
     var cl_showfps: ?*ConVar = null;
 
-    var average_fps: f32 = 0;
-    var last_real_time: i64 = 0;
+    var average_fps: f32 = -1;
+    var last_real_time: i64 = -1;
     var high: u32 = 0;
     var low: u32 = 0;
+    var last_draw = false;
+
+    fn initAverages() void {
+        average_fps = -1;
+        last_real_time = -1;
+        high = 0;
+        low = 0;
+    }
 
     fn shouldDraw() bool {
         if (!client.override_fps_panel) return false;
@@ -107,7 +115,16 @@ const FPSTextHUD = struct {
         }
 
         if (cl_showfps) |v| {
-            return v.getBool();
+            if (!v.getBool()) {
+                last_draw = false;
+                return false;
+            }
+
+            if (!last_draw) {
+                last_draw = true;
+                initAverages();
+            }
+            return true;
         }
 
         return false;
@@ -144,48 +161,46 @@ const FPSTextHUD = struct {
         const real_time: i64 = std.time.milliTimestamp();
         const frame_time: f32 = @as(f32, @floatFromInt(real_time - last_real_time)) / std.time.ms_per_s;
 
-        if (frame_time <= 0.0) {
-            // Still draw an empty line to prevent flickering
-            drawTextHUD("", .{});
-            return;
-        }
+        if (frame_time > 0.0) {
+            if (last_real_time != -1) {
+                if (cl_showfps.?.getInt() == 2) {
+                    const new_weight = 0.1;
+                    const new_frame: f32 = 1.0 / frame_time;
 
-        if (cl_showfps.?.getInt() == 2) {
-            const new_weight = 0.1;
-            const new_frame: f32 = 1.0 / frame_time;
+                    if (average_fps < 0.0) {
+                        average_fps = new_frame;
+                        high = @intFromFloat(average_fps);
+                        low = @intFromFloat(average_fps);
+                    } else {
+                        average_fps *= (1.0 - new_weight);
+                        average_fps += (new_frame * new_weight);
+                    }
 
-            if (average_fps < 0.0) {
-                average_fps = new_frame;
-                high = @intFromFloat(average_fps);
-                low = @intFromFloat(average_fps);
-            } else {
-                average_fps *= (1.0 - new_weight);
-                average_fps += (new_frame * new_weight);
+                    const i_new_frame: u32 = @intFromFloat(new_frame);
+                    if (i_new_frame < low) {
+                        low = i_new_frame;
+                    }
+                    if (i_new_frame > high) {
+                        high = i_new_frame;
+                    }
+
+                    const fps: u32 = @intFromFloat(average_fps);
+                    const frame_ms: f32 = frame_time * std.time.ms_per_s;
+                    drawColoredTextHUD(
+                        getFPSColor(fps),
+                        "{d: >3} fps ({d: >3}, {d: >3}) {d:.1} ms on {s}",
+                        .{ fps, low, high, frame_ms, engine.client.getLevelName() },
+                    );
+                } else {
+                    average_fps = -1;
+                    const fps: u32 = @intFromFloat(1.0 / frame_time);
+                    drawColoredTextHUD(
+                        getFPSColor(fps),
+                        "{d: >3} fps on {s}",
+                        .{ fps, engine.client.getLevelName() },
+                    );
+                }
             }
-
-            const i_new_frame: u32 = @intFromFloat(new_frame);
-            if (i_new_frame < low) {
-                low = i_new_frame;
-            }
-            if (i_new_frame > high) {
-                high = i_new_frame;
-            }
-
-            const fps: u32 = @intFromFloat(average_fps);
-            const frame_ms: f32 = frame_time * std.time.ms_per_s;
-            drawColoredTextHUD(
-                getFPSColor(fps),
-                "{d: >3} fps ({d: >3}, {d: >3}) {d:.1} ms on {s}",
-                .{ fps, low, high, frame_ms, engine.client.getLevelName() },
-            );
-        } else {
-            average_fps = -1;
-            const fps: u32 = @intFromFloat(1.0 / frame_time);
-            drawColoredTextHUD(
-                getFPSColor(fps),
-                "{d: >3} fps on {s}",
-                .{ fps, engine.client.getLevelName() },
-            );
         }
         last_real_time = real_time;
     }
