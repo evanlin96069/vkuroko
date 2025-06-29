@@ -21,7 +21,33 @@ pub fn CUtlVector(T: anytype) type {
     };
 }
 
-pub const CUtlSymbol = c_ushort;
+pub const CUtlString = extern struct {
+    string: ?[*:0]u8,
+
+    pub fn isEmpty(string: *const CUtlString) bool {
+        if (string.string) |s| {
+            return s[0] == 0;
+        }
+        return true;
+    }
+
+    pub fn get(string: *const CUtlString) [*:0]const u8 {
+        if (string.string) |s| {
+            return s;
+        }
+        return "";
+    }
+};
+
+pub const CUtlSymbol = extern struct {
+    id: c_ushort,
+
+    const invalid_symbol = (~@as(c_ushort, 0));
+
+    pub fn isValid(symbol: *const CUtlSymbol) bool {
+        return symbol.id != invalid_symbol;
+    }
+};
 
 pub const IServerPluginCallbacks = extern struct {
     _vt: *align(@alignOf(*anyopaque)) const anyopaque,
@@ -475,9 +501,18 @@ pub const CWin32Font = extern struct {
     buf: [*]u8,
     name: CUtlSymbol,
     // more, but we don't care
+
+    pub fn isValid(font: *const CWin32Font) bool {
+        return font.name.isValid();
+    }
 };
 
 pub const CLinuxFont = extern struct {
-    name: [*:0]u8,
+    _vt: *anyopaque,
+    name: CUtlString,
     // more, but we don't care
+
+    pub fn isValid(font: *const CLinuxFont) bool {
+        return !font.name.isEmpty();
+    }
 };

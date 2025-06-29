@@ -71,7 +71,7 @@ fn font_list_Fn(args: *const tier1.CCommand) callconv(.C) void {
     const font_count = vgui.FontManager.getFontCount();
     var i: u32 = 0;
     while (i < font_count) : (i += 1) {
-        if (vgui.FontManager.isValidFond(i)) {
+        if (vgui.FontManager.isValidFont(i)) {
             if (vgui.FontManager.getFontName(i)) |name| {
                 const font_index = @as(i32, @intCast(i)) - @as(i32, @intCast(font_DefaultFixedOutline));
                 std.log.info("{d}: {s}, size={d}", .{
@@ -215,7 +215,7 @@ pub fn drawColoredTextHUD(color: Color, comptime fmt: []const u8, args: anytype)
     var font: HFont = font_DefaultFixedOutline;
     if (vgui.FontManager.canGetFontName()) {
         const i_font = vkrk_hud_font_index.getInt() + @as(i32, @intCast(font_DefaultFixedOutline));
-        if (i_font >= 0 and vgui.FontManager.isValidFond(@intCast(i_font))) {
+        if (i_font >= 0 and vgui.FontManager.isValidFont(@intCast(i_font))) {
             font = @intCast(i_font);
         }
     }

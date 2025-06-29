@@ -114,10 +114,15 @@ const IMatSystemSurface = extern struct {
 
         const addr: [*]const u8 = @ptrCast(self._vt[VTIndex.getFontTall]);
         var p = addr;
+        var call_count: u32 = 0;
         while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
             return null;
         })) {
             if (p[0] == zhook.x86.Opcode.Op1.call) {
+                call_count += 1;
+                // First call in Linux is PIC
+                if (builtin.os.tag == .linux and call_count != 2) continue;
+
                 const offset = zhook.mem.loadValue(u32, p + 1);
                 FontManagerFunc = @ptrFromInt(@intFromPtr(p + 5) +% offset);
                 break;
@@ -302,29 +307,32 @@ pub const FontManager = struct {
 
     pub fn getFontName(font: HFont) ?[*:0]const u8 {
         if (!canGetFontName()) return null;
+        if (!isValidFont(font)) return null;
 
         if (IMatSystemSurface.VTIndex.getFontName != null) {
             return imatsystem.getFontName(font);
         }
 
-        if (!FontManager.isValidFond(font)) return null;
-        if (FontManager.font_amalgamas.?.elements[font].fonts.size == 0) return null;
+        if (font_amalgamas.?.elements[font].fonts.size == 0) return null;
 
-        const vgui_font = FontManager.font_amalgamas.?.elements[font].fonts.elements[0].font;
+        const vgui_font = font_amalgamas.?.elements[font].fonts.elements[0].font;
         return switch (builtin.os.tag) {
             .windows => if (CUtlSymbol__String) |stringFn|
                 stringFn(&vgui_font.name)
             else
                 null,
-            .linux => vgui_font.name,
+            .linux => vgui_font.name.get(),
             else => unreachable,
         };
     }
 
-    pub fn isValidFond(font: HFont) bool {
-        if (font_amalgamas == null) return false;
-        if (font >= font_amalgamas.?.size) return false;
-        return font_amalgamas.?.elements[font].fonts.size > 0;
+    pub fn isValidFont(font: HFont) bool {
+        if (font_amalgamas) |fonts| {
+            if (font >= fonts.size) return false;
+            if (fonts.elements[font].fonts.size == 0) return false;
+            return fonts.elements[font].fonts.elements[0].font.isValid();
+        }
+        return false;
     }
 
     pub fn findFont(font_name: []const u8, size: u32) !HFont {
@@ -333,7 +341,7 @@ pub const FontManager = struct {
         var found_name = false;
         var i: u32 = 0;
         while (i < font_amalgamas.?.size) : (i += 1) {
-            if (isValidFond(i)) {
+            if (isValidFont(i)) {
                 const name = FontManager.getFontName(i);
                 if (std.mem.eql(u8, font_name, std.mem.span(name))) {
                     found_name = true;
