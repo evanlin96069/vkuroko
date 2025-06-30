@@ -471,6 +471,24 @@ pub const CMoveData = extern struct {
     abs_origin: Vector,
 };
 
+pub const CGlobalVars = extern struct {
+    real_time: f32,
+    frame_count: c_int,
+    absolute_frame_time: f32,
+    current_time: f32,
+    frame_time: f32,
+    max_clients: c_int,
+    tick_count: c_int,
+    interval_per_teck: f32,
+    interpolation_amount: f32,
+    sim_ticks_this_frame: c_int,
+    network_protocol: c_int,
+    save_data: *anyopaque,
+    in_client: bool,
+    timestamp_networking_base: c_int,
+    timestamp_randomize_window: c_int,
+};
+
 pub const HScheme = c_ulong;
 pub const HFont = c_ulong;
 

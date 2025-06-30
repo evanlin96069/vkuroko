@@ -24,6 +24,19 @@ pub var module: Module = .{
     .deinit = deinit,
 };
 
+const IPlayerInfoManager = extern struct {
+    _vt: [*]*const anyopaque,
+
+    const VTIndex = struct {
+        const getGlobalVars = 1;
+    };
+
+    pub fn getGlobalVars(self: *IPlayerInfoManager) *sdk.CGlobalVars {
+        const _getGlobalVars: *const fn (this: *anyopaque) callconv(VCallConv) *sdk.CGlobalVars = @ptrCast(self._vt[VTIndex.getGlobalVars]);
+        return _getGlobalVars(self);
+    }
+};
+
 const CGameMovement = extern struct {
     _vt: [*]*const anyopaque,
 
@@ -261,6 +274,8 @@ pub fn canTracePlayerBBox() bool {
 
 pub var server_dll: []const u8 = "";
 
+pub var player_info_manager: *IPlayerInfoManager = undefined;
+pub var global_vars: *sdk.CGlobalVars = undefined;
 pub var gm: *CGameMovement = undefined;
 
 fn init() bool {
@@ -268,6 +283,13 @@ fn init() bool {
         core.log.warn("Failed to get server module", .{});
         break :blk "";
     };
+
+    player_info_manager = @ptrCast(interfaces.serverFactory("PlayerInfoManager002", null) orelse {
+        core.log.err("Failed to get IPlayerInfoManager interface", .{});
+        return false;
+    });
+
+    global_vars = player_info_manager.getGlobalVars();
 
     gm = @ptrCast(interfaces.serverFactory("GameMovement001", null) orelse {
         core.log.err("Failed to get IGameMovement interface", .{});

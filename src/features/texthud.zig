@@ -5,6 +5,7 @@ const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const ConVar = tier1.ConVar;
 const engine = modules.engine;
+const server = modules.server;
 const client = modules.client;
 const vgui = modules.vgui;
 
@@ -95,7 +96,7 @@ const FPSTextHUD = struct {
     var cl_showfps: ?*ConVar = null;
 
     var average_fps: f32 = -1;
-    var last_real_time: i64 = -1;
+    var last_real_time: f32 = -1;
     var high: u32 = 0;
     var low: u32 = 0;
     var last_draw = false;
@@ -115,7 +116,7 @@ const FPSTextHUD = struct {
         }
 
         if (cl_showfps) |v| {
-            if (!v.getBool()) {
+            if (!v.getBool() or server.global_vars.absolute_frame_time <= 0) {
                 last_draw = false;
                 return false;
             }
@@ -158,8 +159,7 @@ const FPSTextHUD = struct {
     }
 
     fn paint() void {
-        const real_time: i64 = std.time.milliTimestamp();
-        const frame_time: f32 = @as(f32, @floatFromInt(real_time - last_real_time)) / std.time.ms_per_s;
+        const frame_time: f32 = server.global_vars.real_time - last_real_time;
 
         if (frame_time > 0.0) {
             if (last_real_time != -1) {
@@ -202,7 +202,7 @@ const FPSTextHUD = struct {
                 }
             }
         }
-        last_real_time = real_time;
+        last_real_time = server.global_vars.real_time;
     }
 
     fn register() void {
