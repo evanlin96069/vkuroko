@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const version_str = @import("build_options").version_str;
+
 const sdk = @import("sdk");
 const Hook = @import("zhook").Hook;
 
@@ -112,7 +114,7 @@ fn pause(_: *anyopaque) callconv(VCallConv) void {}
 fn unpause(_: *anyopaque) callconv(VCallConv) void {}
 
 fn getPluginDescription(_: *anyopaque) callconv(VCallConv) [*:0]const u8 {
-    return "vkuroko - evanlin96069";
+    return "vkuroko " ++ version_str;
 }
 
 fn levelInit(_: *anyopaque, map_name: [*:0]const u8) callconv(VCallConv) void {
