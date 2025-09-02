@@ -72,10 +72,9 @@ pub fn link(
             "value.c",
             "vm.c",
             "io.c",
-            "libtime.c",
         },
         .flags = &.{
-            "-DKRK_BUILD_DATE=\"Feb 27 2025\"", // Date of commit 0ae991c68e0dd58bd12d1f05172bc07c1454a439
+            "-DKRK_BUILD_DATE=\"Aug 22 2025\"", // Date of commit 48462366520c2293cb586516ef91be61f8385500
             "-DKRK_BUNDLE_LIBS",
             "-DKRK_DISABLE_THREADS",
         },

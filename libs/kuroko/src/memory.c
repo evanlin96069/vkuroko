@@ -7,7 +7,6 @@
 #include <kuroko/util.h>
 #include <kuroko/io.h>
 
-#include "libtime.h"
 #include "private.h"
 
 #define FREE_OBJECT(t,p) krk_reallocate(p,sizeof(t),0)
