@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.14.1
+          version: 0.15.1
       - name: Check Format
         run: zig fmt --check .
       - name: Build
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.14.1
+          version: 0.15.1
       - name: Build
         run: zig build -Doptimize=ReleaseFast -Dtarget=linux
       - name: Upload Artifact
