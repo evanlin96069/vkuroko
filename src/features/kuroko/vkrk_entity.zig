@@ -88,7 +88,7 @@ pub fn bindAttributes(module: *KrkInstance) void {
     }
 }
 
-fn get_player(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn get_player(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     var i_is_server: c_int = 1;
     if (!kuroko.parseArgs(
         "__init__",
@@ -127,7 +127,7 @@ fn get_player(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) 
     return PlayerInfo.create(&player_info);
 }
 
-fn get_portals(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn get_portals(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     var i_is_server: c_int = 1;
     if (!kuroko.parseArgs(
         "__init__",

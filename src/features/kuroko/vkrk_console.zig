@@ -161,7 +161,7 @@ pub fn bindAttributes(module: *KrkInstance) void {
     _ = VM.interpret(@embedFile("scripts/console.krk"), vkrk.module_name);
 }
 
-fn cmd(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn cmd(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     var command: [*:0]const u8 = undefined;
     if (!kuroko.parseArgs(
         "cmd",
@@ -180,7 +180,7 @@ fn cmd(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValu
     return KrkValue.noneValue();
 }
 
-fn find_var(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn find_var(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     var name: [*:0]const u8 = undefined;
     if (!kuroko.parseArgs(
         "find_var",
@@ -205,7 +205,7 @@ fn find_var(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) Kr
     return inst.asValue();
 }
 
-fn find_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn find_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     var name: [*:0]const u8 = undefined;
     if (!kuroko.parseArgs(
         "find_command",
@@ -224,7 +224,7 @@ fn find_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C
     };
 
     const inst = KrkInstance.create(ConCommand.class);
-    const command_inst: *ConCommand = @alignCast(@ptrCast(inst));
+    const command_inst: *ConCommand = @ptrCast(@alignCast(inst));
     command_inst.command = command;
 
     return inst.asValue();
@@ -244,7 +244,7 @@ const CVarIterator = extern struct {
         return @ptrCast(v.asObject());
     }
 
-    fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("__iter__() takes no arguments (%d given)", .{argc - 1});
@@ -260,7 +260,7 @@ const CVarIterator = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn __iter__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __iter__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("__iter__() takes no arguments (%d given)", .{argc - 1});
@@ -273,7 +273,7 @@ const CVarIterator = extern struct {
         return argv[0];
     }
 
-    fn __call__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __call__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("__iter__() takes no arguments (%d given)", .{argc - 1});
@@ -288,7 +288,7 @@ const CVarIterator = extern struct {
             var inst: *KrkInstance = undefined;
             if (command.isCommand()) {
                 inst = KrkInstance.create(ConCommand.class);
-                const command_inst: *ConCommand = @alignCast(@ptrCast(inst));
+                const command_inst: *ConCommand = @ptrCast(@alignCast(inst));
                 command_inst.command = @ptrCast(command);
             } else {
                 inst = KrkInstance.create(ConVar.class);
@@ -317,7 +317,7 @@ const ConVar = extern struct {
         return @ptrCast(v.asObject());
     }
 
-    fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         var name: [*:0]const u8 = undefined;
         var default_value: KrkValue = undefined;
         var help_string: ?[*:0]const u8 = null;
@@ -413,7 +413,7 @@ const ConVar = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn __repr__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __repr__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("__repr__() takes no arguments (%d given)", .{argc - 1});
@@ -427,7 +427,7 @@ const ConVar = extern struct {
         return KrkValue.stringFromFormat("<ConVar %s at %p>", .{ self.cvar.base1.name, @intFromPtr(self) });
     }
 
-    fn is_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn is_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         _ = argv;
         if (argc != 1) {
@@ -437,7 +437,7 @@ const ConVar = extern struct {
         return KrkValue.boolValue(false);
     }
 
-    fn get_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_flags() takes no arguments (%d given)", .{argc - 1});
@@ -451,7 +451,7 @@ const ConVar = extern struct {
         return KrkValue.intValue(@as(c_uint, @bitCast(self.cvar.getParentConst().base1.flags)));
     }
 
-    fn set_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn set_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 2) {
             return VM.getInstance().exceptions.argumentError.runtimeError("set_flags() takes exactly 1 argument (%d given)", .{argc - 1});
@@ -472,7 +472,7 @@ const ConVar = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn get_name(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_name(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_name() takes no arguments (%d given)", .{argc - 1});
@@ -486,7 +486,7 @@ const ConVar = extern struct {
         return KrkString.copyString(self.cvar.getParentConst().base1.name).asValue();
     }
 
-    fn get_help_text(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_help_text(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_help_text() takes no arguments (%d given)", .{argc - 1});
@@ -500,7 +500,7 @@ const ConVar = extern struct {
         return KrkString.copyString(self.cvar.getParentConst().base1.help_string).asValue();
     }
 
-    fn is_registered(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn is_registered(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("is_registered() takes no arguments (%d given)", .{argc - 1});
@@ -514,7 +514,7 @@ const ConVar = extern struct {
         return KrkValue.boolValue(self.cvar.getParentConst().base1.registered);
     }
 
-    fn get_min(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_min(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_min() takes no arguments (%d given)", .{argc - 1});
@@ -532,7 +532,7 @@ const ConVar = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn get_max(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_max(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_max() takes no arguments (%d given)", .{argc - 1});
@@ -550,7 +550,7 @@ const ConVar = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn get_default(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_default(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_default() takes no arguments (%d given)", .{argc - 1});
@@ -564,7 +564,7 @@ const ConVar = extern struct {
         return KrkString.copyString(self.cvar.getParent().default_value).asValue();
     }
 
-    fn set_value(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn set_value(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 2) {
             return VM.getInstance().exceptions.argumentError.runtimeError("set_value() takes exactly 1 argument (%d given)", .{argc - 1});
@@ -591,7 +591,7 @@ const ConVar = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn get_string(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_string(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_string() takes no arguments (%d given)", .{argc - 1});
@@ -605,7 +605,7 @@ const ConVar = extern struct {
         return KrkString.copyString(self.cvar.getString()).asValue();
     }
 
-    fn get_float(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_float(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_float() takes no arguments (%d given)", .{argc - 1});
@@ -619,7 +619,7 @@ const ConVar = extern struct {
         return KrkValue.floatValue(self.cvar.getFloat());
     }
 
-    fn get_int(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_int(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_int() takes no arguments (%d given)", .{argc - 1});
@@ -633,7 +633,7 @@ const ConVar = extern struct {
         return KrkValue.intValue(self.cvar.getInt());
     }
 
-    fn get_bool(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_bool(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_bool() takes no arguments (%d given)", .{argc - 1});
@@ -708,7 +708,7 @@ const ConCommand = extern struct {
         return self;
     }
 
-    fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         var callback = KrkValue.noneValue();
         var name: ?[*:0]const u8 = null;
         var help_str: ?[*:0]const u8 = null;
@@ -759,7 +759,7 @@ const ConCommand = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn __call__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __call__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc < 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("__call__() required self", .{});
@@ -824,7 +824,7 @@ const ConCommand = extern struct {
         return KrkValue.noneValue();
     }
 
-    fn __repr__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn __repr__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("__repr__() takes no arguments (%d given)", .{argc - 1});
@@ -842,7 +842,7 @@ const ConCommand = extern struct {
         return KrkValue.stringFromFormat("<ConCommand decorator at %p>", .{@intFromPtr(self)});
     }
 
-    fn is_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn is_command(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         _ = argv;
         if (argc != 1) {
@@ -852,7 +852,7 @@ const ConCommand = extern struct {
         return KrkValue.boolValue(true);
     }
 
-    fn get_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_flags() takes no arguments (%d given)", .{argc - 1});
@@ -870,7 +870,7 @@ const ConCommand = extern struct {
         return VM.getInstance().exceptions.Exception.runtimeError("ConCommand not initialized", .{});
     }
 
-    fn set_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn set_flags(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 2) {
             return VM.getInstance().exceptions.argumentError.runtimeError("set_flags() takes exactly 1 argument (%d given)", .{argc - 1});
@@ -894,7 +894,7 @@ const ConCommand = extern struct {
         return VM.getInstance().exceptions.Exception.runtimeError("ConCommand not initialized", .{});
     }
 
-    fn get_name(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_name(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_name() takes no arguments (%d given)", .{argc - 1});
@@ -912,7 +912,7 @@ const ConCommand = extern struct {
         return VM.getInstance().exceptions.Exception.runtimeError("ConCommand not initialized", .{});
     }
 
-    fn get_help_text(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn get_help_text(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("get_help_text() takes no arguments (%d given)", .{argc - 1});
@@ -930,7 +930,7 @@ const ConCommand = extern struct {
         return VM.getInstance().exceptions.Exception.runtimeError("ConCommand not initialized", .{});
     }
 
-    fn is_registered(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+    fn is_registered(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
         _ = has_kw;
         if (argc != 1) {
             return VM.getInstance().exceptions.argumentError.runtimeError("is_registered() takes no arguments (%d given)", .{argc - 1});
@@ -1013,7 +1013,7 @@ const DynConCommand = struct {
         return null;
     }
 
-    fn vkrkCommandCallback(args: *const tier1.CCommand) callconv(.C) void {
+    fn vkrkCommandCallback(args: *const tier1.CCommand) callconv(.c) void {
         if (args.argc < 1) {
             log.warn("No command name.", .{});
             return;
@@ -1047,7 +1047,7 @@ const DynConCommand = struct {
         context: *anyopaque,
         values: [*]const KrkValue,
         count: usize,
-    ) callconv(.C) c_int {
+    ) callconv(.c) c_int {
         const completion: *align(1) CommandCompletionContext = @ptrCast(context);
         var i: usize = 0;
         while (i < count) : (i += 1) {
@@ -1072,7 +1072,7 @@ const DynConCommand = struct {
     fn vkrkCommandCompletionCallback(
         partial: [*:0]const u8,
         commands: *[tier1.ConCommand.completion_max_items][tier1.ConCommand.completion_item_length]u8,
-    ) callconv(.C) c_int {
+    ) callconv(.c) c_int {
         const line = std.mem.span(partial);
         const name = if (std.mem.indexOf(u8, line, " ")) |index| line[0..index] else line;
         if (findDynConCommand(name)) |command| {

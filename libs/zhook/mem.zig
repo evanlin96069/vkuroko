@@ -83,14 +83,17 @@ pub const MatchedPattern = struct {
     ptr: [*]const u8,
 };
 
-pub fn scanAllPatterns(mem: []const u8, patterns: []const []const ?u8, data: *std.ArrayList(MatchedPattern)) !void {
+pub fn scanAllPatterns(mem: []const u8, patterns: []const []const ?u8, data: *std.ArrayList(MatchedPattern), allocator: std.mem.Allocator) !void {
     for (patterns, 0..) |pattern, i| {
         var base: usize = 0;
         while (scanFirst(mem[base..], pattern)) |offset| {
-            try data.append(MatchedPattern{
-                .index = i,
-                .ptr = mem.ptr + base + offset,
-            });
+            try data.append(
+                allocator,
+                MatchedPattern{
+                    .index = i,
+                    .ptr = mem.ptr + base + offset,
+                },
+            );
             base += offset + pattern.len;
         }
     }

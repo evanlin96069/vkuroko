@@ -57,7 +57,7 @@ fn printResult(result: KrkValue) void {
     sb.discard();
 }
 
-fn vkrk_interpret_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn vkrk_interpret_Fn(args: *const tier1.CCommand) callconv(.c) void {
     if (args.argc != 2) {
         std.log.info("vkrk_interpret <code>", .{});
         return;
@@ -78,7 +78,7 @@ var vkrk_run = ConCommand.init(.{
     .completion_callback = vkrk_run_completionFn,
 });
 
-fn vkrk_run_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn vkrk_run_Fn(args: *const tier1.CCommand) callconv(.c) void {
     if (args.argc != 2 or args.args(1).len == 0) {
         std.log.info("vkrk_run <file>", .{});
         return;
@@ -86,19 +86,19 @@ fn vkrk_run_Fn(args: *const tier1.CCommand) callconv(.C) void {
 
     const ext = ".krk";
 
-    var path = std.ArrayList(u8).init(core.allocator);
-    defer path.deinit();
+    var path: std.ArrayList(u8) = .empty;
+    defer path.deinit(core.allocator);
 
-    path.appendSlice(args.args(1)) catch return;
+    path.appendSlice(core.allocator, args.args(1)) catch return;
     if (std.fs.path.extension(path.items).len == 0) {
-        path.appendSlice(ext) catch return;
+        path.appendSlice(core.allocator, ext) catch return;
     }
 
     if (!std.fs.path.isAbsolute(path.items)) {
-        path.insertSlice(0, std.mem.span(krk_path)) catch return;
+        path.insertSlice(core.allocator, 0, std.mem.span(krk_path)) catch return;
     }
 
-    path.append(0) catch return;
+    path.append(core.allocator, 0) catch return;
 
     _ = VM.runFile(@ptrCast(path.items.ptr), krk_from_file);
     VM.resetStack();
@@ -107,9 +107,10 @@ fn vkrk_run_Fn(args: *const tier1.CCommand) callconv(.C) void {
 fn vkrk_run_completionFn(
     partial: [*:0]const u8,
     commands: *[ConCommand.completion_max_items][ConCommand.completion_item_length]u8,
-) callconv(.C) c_int {
+) callconv(.c) c_int {
     const S = struct {
         var completion = FileCompletion.init(
+            core.allocator,
             "vkrk_run",
             "kuroko",
             ".krk",
@@ -125,7 +126,7 @@ var krk_reset = ConCommand.init(.{
     .command_callback = krk_reset_Fn,
 });
 
-fn krk_reset_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn krk_reset_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
     resetKrkVM();
 }

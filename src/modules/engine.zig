@@ -65,7 +65,7 @@ pub fn unloadPlugin() bool {
     return false;
 }
 
-fn vkrk_unload_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn vkrk_unload_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
 
     if (!unloadPlugin()) {

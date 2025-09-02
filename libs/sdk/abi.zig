@@ -1,9 +1,10 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub const VCallConv = switch (builtin.os.tag) {
-    .windows => std.builtin.CallingConvention.Thiscall,
-    else => std.builtin.CallingConvention.C,
+pub const VCallConv: std.builtin.CallingConvention = switch (builtin.target.os.tag) {
+    .windows => .{ .x86_thiscall = .{} },
+    .linux => .c,
+    else => unreachable,
 };
 
 pub const DtorVTable = switch (builtin.os.tag) {

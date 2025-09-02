@@ -14,12 +14,12 @@ fn Event(comptime CallbackFn: type) type {
         pub fn init(alloc: std.mem.Allocator) Self {
             return Self{
                 .alloc = alloc,
-                .callbacks = std.ArrayList(CallbackFn).init(alloc),
+                .callbacks = .empty,
             };
         }
 
         pub fn deinit(self: *Self) void {
-            self.callbacks.deinit();
+            self.callbacks.deinit(self.alloc);
         }
 
         pub fn emit(self: *const Self, args: anytype) void {
@@ -29,7 +29,7 @@ fn Event(comptime CallbackFn: type) type {
         }
 
         pub fn connect(self: *Self, callback: CallbackFn) void {
-            self.callbacks.append(callback) catch unreachable;
+            self.callbacks.append(self.alloc, callback) catch unreachable;
         }
     };
 }

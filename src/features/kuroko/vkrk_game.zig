@@ -29,7 +29,7 @@ pub fn bindAttributes(module: *KrkInstance) void {
     );
 }
 
-fn get_game_dir(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn get_game_dir(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     _ = has_kw;
     _ = argv;
     if (argc != 0) {
@@ -39,7 +39,7 @@ fn get_game_dir(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C
     return KrkString.copyString(engine.client.getGameDirectory()).asValue();
 }
 
-fn is_portal(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn is_portal(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     _ = has_kw;
     _ = argv;
     if (argc != 0) {
@@ -49,7 +49,7 @@ fn is_portal(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) K
     return KrkValue.boolValue(game_detection.doesGameLooksLikePortal());
 }
 
-fn get_build_number(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn get_build_number(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     _ = has_kw;
     _ = argv;
     if (argc != 0) {
@@ -62,7 +62,7 @@ fn get_build_number(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callcon
     return KrkValue.noneValue();
 }
 
-fn get_map_name(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn get_map_name(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     _ = has_kw;
     _ = argv;
     if (argc != 0) {

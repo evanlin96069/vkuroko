@@ -103,7 +103,9 @@ fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u
     const allocator = std.heap.page_allocator;
     var file = try std.fs.openFileAbsolute("/proc/self/maps", .{ .mode = .read_only });
     defer file.close();
-    var reader = file.reader();
+
+    // TODO: deprecated
+    var reader = file.deprecatedReader();
 
     var base: usize = 0;
     var end: usize = 0;
@@ -162,8 +164,8 @@ fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u
 // Match call + add pattern
 // If matched, inst + len will be the start of the imm32
 pub fn matchPIC(inst: [*]const u8) ?u32 {
-    if (inst[0] != x86.Opcode.Op1.call) return null;
-    if (inst[5] == x86.Opcode.Op1.alumiw) {
+    if (inst[0] != @intFromEnum(x86.Opcode.Op1.call)) return null;
+    if (inst[5] == @intFromEnum(x86.Opcode.Op1.alumiw)) {
         const modrm = inst[6];
         // mod must be 0b11  (register operand)
         if ((modrm & 0b1100_0000) != 0b1100_0000) return null;
@@ -175,7 +177,7 @@ pub fn matchPIC(inst: [*]const u8) ?u32 {
         const rm = modrm & 0b0000_0111;
         if (rm == 0b100) return null;
         return 7;
-    } else if (inst[5] == x86.Opcode.Op1.addeaxi) {
+    } else if (inst[5] == @intFromEnum(x86.Opcode.Op1.addeaxi)) {
         return 6;
     }
     return null;

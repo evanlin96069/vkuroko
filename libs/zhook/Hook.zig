@@ -72,7 +72,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
     var mem: [*]u8 = @ptrCast(func);
 
     // Hook the underlying thing if the function jmp immediately.
-    while (mem[0] == x86.Opcode.Op1.jmpiw) {
+    while (mem[0] == @intFromEnum(x86.Opcode.Op1.jmpiw)) {
         const offset = loadValue(u32, mem + 1);
         mem = @ptrFromInt(@intFromPtr(mem + 5) +% offset);
     }
@@ -85,33 +85,33 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
         if (len >= 5) break;
 
         // No checks for rel16 at all. I don't think we will encounter them.
-        const op0 = mem[len];
-        switch (op0) {
-            x86.Opcode.Op1.jmpi8,
-            x86.Opcode.Op1.jcxz,
-            x86.Opcode.Op1.jo,
-            x86.Opcode.Op1.jno,
-            x86.Opcode.Op1.jb,
-            x86.Opcode.Op1.jnb,
-            x86.Opcode.Op1.jz,
-            x86.Opcode.Op1.jnz,
-            x86.Opcode.Op1.jna,
-            x86.Opcode.Op1.ja,
-            x86.Opcode.Op1.js,
-            x86.Opcode.Op1.jns,
-            x86.Opcode.Op1.jp,
-            x86.Opcode.Op1.jnp,
-            x86.Opcode.Op1.jl,
-            x86.Opcode.Op1.jnl,
-            x86.Opcode.Op1.jng,
-            x86.Opcode.Op1.jg,
+        const op1: x86.Opcode.Op1 = @enumFromInt(mem[len]);
+        switch (op1) {
+            .jmpi8,
+            .jcxz,
+            .jo,
+            .jno,
+            .jb,
+            .jnb,
+            .jz,
+            .jnz,
+            .jna,
+            .ja,
+            .js,
+            .jns,
+            .jp,
+            .jnp,
+            .jl,
+            .jnl,
+            .jng,
+            .jg,
             => {
                 // TODO: Make it rel32 jump in the trampoline
                 return error.BadInstruction;
             },
 
-            x86.Opcode.Op1.jmpiw,
-            x86.Opcode.Op1.call,
+            .jmpiw,
+            .call,
             => {
                 const offset = loadValue(u32, mem + len + 1);
                 rel32_patch = .{
@@ -120,7 +120,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
                     .orig = offset,
                 };
 
-                if (op0 == x86.Opcode.Op1.call and builtin.os.tag == .linux) {
+                if (op1 == .call and builtin.os.tag == .linux) {
                     // Look for PIC pattern:
                     // call __i686.get_pc_thunk.reg
                     // add reg, imm32
@@ -134,25 +134,25 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
                 }
             },
 
-            x86.Opcode.op2_byte => {
-                const op1 = mem[len + 1];
-                switch (op1) {
-                    x86.Opcode.Op2.joii,
-                    x86.Opcode.Op2.jnoii,
-                    x86.Opcode.Op2.jbii,
-                    x86.Opcode.Op2.jnbii,
-                    x86.Opcode.Op2.jzii,
-                    x86.Opcode.Op2.jnzii,
-                    x86.Opcode.Op2.jnaii,
-                    x86.Opcode.Op2.jaii,
-                    x86.Opcode.Op2.jsii,
-                    x86.Opcode.Op2.jnsii,
-                    x86.Opcode.Op2.jpii,
-                    x86.Opcode.Op2.jnpii,
-                    x86.Opcode.Op2.jlii,
-                    x86.Opcode.Op2.jnlii,
-                    x86.Opcode.Op2.jngii,
-                    x86.Opcode.Op2.jgii,
+            .op2 => {
+                const op2: x86.Opcode.Op2 = @enumFromInt(mem[len + 1]);
+                switch (op2) {
+                    .joii,
+                    .jnoii,
+                    .jbii,
+                    .jnbii,
+                    .jzii,
+                    .jnzii,
+                    .jnaii,
+                    .jaii,
+                    .jsii,
+                    .jnsii,
+                    .jpii,
+                    .jnpii,
+                    .jlii,
+                    .jnlii,
+                    .jngii,
+                    .jgii,
                     => {
                         const offset = loadValue(u32, mem + len + 2);
                         rel32_patch = .{
@@ -174,7 +174,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
     }
 
     @memcpy(trampoline[0..len], mem);
-    trampoline[len] = x86.Opcode.Op1.jmpiw;
+    trampoline[len] = @intFromEnum(x86.Opcode.Op1.jmpiw);
     const jmp1_offset: *align(1) u32 = @ptrCast(trampoline.ptr + len + 1);
     jmp1_offset.* = @intFromPtr(mem + len) -% @intFromPtr(trampoline.ptr + len + 5);
 
@@ -184,7 +184,7 @@ pub fn hookDetour(func: *anyopaque, target: *const anyopaque, trampoline: []u8) 
     }
 
     var detour: [5]u8 = undefined;
-    detour[0] = x86.Opcode.Op1.jmpiw;
+    detour[0] = @intFromEnum(x86.Opcode.Op1.jmpiw);
     const jmp2_offset: *align(1) u32 = @ptrCast(&detour[1]);
     jmp2_offset.* = @intFromPtr(target) -% @intFromPtr(mem + 5);
 

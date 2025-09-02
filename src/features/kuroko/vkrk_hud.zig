@@ -18,7 +18,7 @@ pub fn bindAttributes(module: *KrkInstance) void {
     );
 }
 
-fn draw_text_hud(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn draw_text_hud(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     var string: [*:0]const u8 = undefined;
     if (!kuroko.parseArgs(
         "draw_text_hud",

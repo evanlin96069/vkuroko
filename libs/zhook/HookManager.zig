@@ -6,13 +6,15 @@ const utils = @import("utils.zig");
 
 const HookManager = @This();
 
+allocator: std.mem.Allocator,
 hooks: std.ArrayList(Hook),
 exec_page: []u8,
 
 // Page must has rwx permissions
 pub fn init(alloc: std.mem.Allocator, exec_page: *align(std.heap.page_size_min) [std.heap.page_size_min]u8) HookManager {
     return HookManager{
-        .hooks = std.ArrayList(Hook).init(alloc),
+        .allocator = alloc,
+        .hooks = .empty,
         .exec_page = exec_page[0..],
     };
 }
@@ -24,7 +26,7 @@ pub fn deinit(self: *HookManager) usize {
         count += 1;
     }
 
-    self.hooks.deinit();
+    self.hooks.deinit(self.allocator);
     return count;
 }
 
@@ -40,7 +42,7 @@ pub fn hookVMT(self: *HookManager, T: type, vt: [*]*const anyopaque, index: usiz
     var hook = try Hook.hookVMT(vt, index, target);
     errdefer hook.unhook() catch {};
 
-    try self.hooks.append(hook);
+    try self.hooks.append(self.allocator, hook);
 
     return @ptrCast(hook.orig.?);
 }
@@ -49,7 +51,7 @@ pub fn hookDetour(self: *HookManager, T: type, func: *const anyopaque, target: *
     var hook = try Hook.hookDetour(@constCast(func), target, self.exec_page);
     errdefer hook.unhook() catch {};
 
-    try self.hooks.append(hook);
+    try self.hooks.append(self.allocator, hook);
 
     self.exec_page = self.exec_page[hook.data.detour.trampoline.len..];
 

@@ -109,14 +109,14 @@ pub const ConCommand = extern struct {
         _pad_0: u5 = 0,
     } = .{},
 
-    pub const CommandCallbackFn = *const fn (args: *const CCommand) callconv(.C) void;
+    pub const CommandCallbackFn = *const fn (args: *const CCommand) callconv(.c) void;
 
     pub const completion_max_items = 64;
     pub const completion_item_length = 64;
     pub const CommandCompletionCallbackFn = *const fn (
         partial: [*:0]const u8,
         commands: *[completion_max_items][completion_item_length]u8,
-    ) callconv(.C) c_int;
+    ) callconv(.c) c_int;
 
     pub const Data = struct {
         name: [*:0]const u8,
@@ -212,7 +212,7 @@ pub const ConVar = extern struct {
 
     change_callback: ?ChangeCallbackFn = null,
 
-    pub const ChangeCallbackFn = *const fn (cvar: *IConVar, old_string: [*:0]const u8, old_value: f32) callconv(.C) void;
+    pub const ChangeCallbackFn = *const fn (cvar: *IConVar, old_string: [*:0]const u8, old_value: f32) callconv(.c) void;
 
     pub const Data = struct {
         name: [*:0]const u8,

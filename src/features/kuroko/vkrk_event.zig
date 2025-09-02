@@ -19,15 +19,15 @@ pub fn bindAttributes(module: *KrkInstance) void {
 
     var it = events.iterator();
     while (it.next()) |kv| {
-        kv.value_ptr.clearAndFree();
+        kv.value_ptr.clearAndFree(core.allocator);
     }
 
     _ = VM.interpret(@embedFile("scripts/event.krk"), vkrk.module_name);
 }
 
 pub fn init() void {
-    events.put("on_tick", std.ArrayList(KrkValue).init(core.allocator)) catch return;
-    events.put("on_paint", std.ArrayList(KrkValue).init(core.allocator)) catch return;
+    events.put("on_tick", std.ArrayList(KrkValue).empty) catch return;
+    events.put("on_paint", std.ArrayList(KrkValue).empty) catch return;
 
     VKrkHUD.register();
     event.tick.connect(onTick);
@@ -36,12 +36,12 @@ pub fn init() void {
 pub fn deinit() void {
     var it = events.iterator();
     while (it.next()) |kv| {
-        kv.value_ptr.deinit();
+        kv.value_ptr.deinit(core.allocator);
     }
     events.deinit();
 }
 
-fn _event_register(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.C) KrkValue {
+fn _event_register(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
     var event_name: [*:0]const u8 = undefined;
     var callback: KrkValue = undefined;
     if (!kuroko.parseArgs(
@@ -60,7 +60,7 @@ fn _event_register(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv
     }
 
     if (events.getPtr(std.mem.span(event_name))) |callbacks| {
-        callbacks.append(callback) catch return VM.getInstance().exceptions.Exception.runtimeError("Out of memory", .{});
+        callbacks.append(core.allocator, callback) catch return VM.getInstance().exceptions.Exception.runtimeError("Out of memory", .{});
     } else {
         return VM.getInstance().exceptions.argumentError.runtimeError("Unknown event name '%s'", .{event_name});
     }

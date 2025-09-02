@@ -3,8 +3,7 @@ const builtin = @import("builtin");
 
 const str_utils = @import("str_utils.zig");
 
-const core = @import("../core.zig");
-const windows = core.windows;
+const windows = @import("../core.zig").windows;
 const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const ConCommand = tier1.ConCommand;
@@ -52,6 +51,7 @@ pub fn simpleComplete(
 }
 
 pub const FileCompletion = struct {
+    allocator: std.mem.Allocator,
     command: []const u8,
     base_path: []const u8,
     file_extension: []const u8,
@@ -64,22 +64,24 @@ pub const FileCompletion = struct {
     var list: ?*FileCompletion = null;
 
     pub fn init(
+        alloc: std.mem.Allocator,
         command: []const u8,
         base_path: []const u8,
         file_extension: []const u8,
     ) FileCompletion {
         return .{
+            .allocator = alloc,
             .command = command,
             .base_path = base_path,
             .file_extension = file_extension,
-            .cache = std.ArrayList([]const u8).init(core.allocator),
+            .cache = .empty,
             .cached_directory = null,
         };
     }
 
     fn deinit(self: *FileCompletion) void {
         self.clearCache();
-        self.cache.deinit();
+        self.cache.deinit(self.allocator);
     }
 
     fn register(self: *FileCompletion) void {
@@ -90,12 +92,12 @@ pub const FileCompletion = struct {
 
     fn clearCache(self: *FileCompletion) void {
         if (self.cached_directory) |dir| {
-            core.allocator.free(dir);
+            self.allocator.free(dir);
             self.cached_directory = null;
         }
 
         for (self.cache.items) |s| {
-            core.allocator.free(s);
+            self.allocator.free(s);
         }
 
         self.cache.clearRetainingCapacity();
@@ -157,10 +159,10 @@ pub const FileCompletion = struct {
 
         if (!cached) {
             self.clearCache();
-            self.cached_directory = try core.allocator.dupe(u8, dir_name);
+            self.cached_directory = try self.allocator.dupe(u8, dir_name);
 
             const path = try std.fmt.allocPrint(
-                core.allocator,
+                self.allocator,
                 "{s}/{s}{s}{s}/" ++ if (builtin.os.tag == .windows) "*.*" else "",
                 .{
                     engine.client.getGameDirectory(),
@@ -169,12 +171,12 @@ pub const FileCompletion = struct {
                     dir_name,
                 },
             );
-            defer core.allocator.free(path);
+            defer self.allocator.free(path);
 
             if (builtin.os.tag == .windows) {
                 // Using functions from std keeps getting me stack overflow so I just use Windows API calls.
-                const w_path = try std.unicode.utf8ToUtf16LeAllocZ(core.allocator, path);
-                defer core.allocator.free(w_path);
+                const w_path = try std.unicode.utf8ToUtf16LeAllocZ(self.allocator, path);
+                defer self.allocator.free(w_path);
 
                 var fd: windows.WIN32_FIND_DATAW = undefined;
                 const h_find = windows.FindFirstFileW(w_path, &fd);
@@ -185,21 +187,21 @@ pub const FileCompletion = struct {
 
                 while (true) {
                     const len = std.mem.indexOf(u16, &fd.cFileName, &[_]u16{0}).?;
-                    const name = try std.unicode.utf16LeToUtf8Alloc(core.allocator, fd.cFileName[0..len]);
-                    defer core.allocator.free(name);
+                    const name = try std.unicode.utf16LeToUtf8Alloc(self.allocator, fd.cFileName[0..len]);
+                    defer self.allocator.free(name);
 
                     if (fd.dwFileAttributes & windows.FILE_ATTRIBUTE_DIRECTORY != 0) {
                         if (!std.mem.eql(u8, name, ".") and !std.mem.eql(u8, name, "..")) {
-                            const s = try std.fmt.allocPrint(core.allocator, "{s}/", .{name});
-                            errdefer core.allocator.free(s);
-                            try self.cache.append(s);
+                            const s = try std.fmt.allocPrint(self.allocator, "{s}/", .{name});
+                            errdefer self.allocator.free(s);
+                            try self.cache.append(self.allocator, s);
                         }
                     } else {
                         if (std.mem.endsWith(u8, name, self.file_extension)) {
                             const dot = std.mem.lastIndexOf(u8, name, ".") orelse continue;
-                            const s = try core.allocator.dupe(u8, name[0..dot]);
-                            errdefer core.allocator.free(s);
-                            try self.cache.append(s);
+                            const s = try self.allocator.dupe(u8, name[0..dot]);
+                            errdefer self.allocator.free(s);
+                            try self.cache.append(self.allocator, s);
                         }
                     }
 
@@ -209,23 +211,23 @@ pub const FileCompletion = struct {
                 }
             } else {
                 var dir = try std.fs.openDirAbsolute(path, .{ .iterate = true });
-                var walker = try dir.walk(core.allocator);
+                var walker = try dir.walk(self.allocator);
                 defer walker.deinit();
 
                 while (try walker.next()) |entry| {
                     const name = entry.basename;
                     switch (entry.kind) {
                         .directory => {
-                            const s = try std.fmt.allocPrint(core.allocator, "{s}/", .{name});
-                            errdefer core.allocator.free(s);
-                            try self.cache.append(s);
+                            const s = try std.fmt.allocPrint(self.allocator, "{s}/", .{name});
+                            errdefer self.allocator.free(s);
+                            try self.cache.append(self.allocator, s);
                         },
                         .file => {
                             if (std.mem.endsWith(u8, name, self.file_extension)) {
                                 const dot = std.mem.lastIndexOf(u8, name, ".") orelse continue;
-                                const s = core.allocator.dupe(u8, name[0..dot]) catch continue;
-                                errdefer core.allocator.free(s);
-                                try self.cache.append(s);
+                                const s = self.allocator.dupe(u8, name[0..dot]) catch continue;
+                                errdefer self.allocator.free(s);
+                                try self.cache.append(self.allocator, s);
                             }
                         },
                         else => {},

@@ -5,7 +5,7 @@ const core = @import("core.zig");
 
 const engine = @import("modules/engine.zig");
 
-pub const CreateInterfaceFn = *const fn (name: [*:0]const u8, ret: ?*c_int) callconv(.C) ?*align(@alignOf(*anyopaque)) anyopaque;
+pub const CreateInterfaceFn = *const fn (name: [*:0]const u8, ret: ?*c_int) callconv(.c) ?*align(@alignOf(*anyopaque)) anyopaque;
 
 pub var engineFactory: CreateInterfaceFn = undefined;
 pub var serverFactory: CreateInterfaceFn = undefined;

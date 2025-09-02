@@ -11,8 +11,6 @@
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1
 
-extern int clock_gettime(int clk_id, struct timespec *tp);
-
 extern struct tm *localtime_r(const time_t *timep, struct tm *result);
 
 extern struct tm *gmtime_r(const time_t *timep, struct tm *result);

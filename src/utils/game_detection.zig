@@ -75,13 +75,13 @@ fn findBuildNumber() ?i32 {
                 while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
                     return null;
                 })) {
-                    if (p[0] == zhook.x86.Opcode.Op1.call) {
+                    if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.call)) {
                         if (zhook.utils.matchPIC(p)) |off| {
                             // imm32 from add
                             const imm32 = zhook.mem.loadValue(u32, p + off);
                             GOT_addr = @intFromPtr(p + 5) +% imm32;
                         }
-                    } else if (p[0] == zhook.x86.Opcode.Op1.miscmw and p[1] == zhook.x86.modrm(0b10, 0b110, 0b011)) {
+                    } else if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.miscmw) and p[1] == zhook.x86.modrm(0b10, 0b110, 0b011)) {
                         if (GOT_addr) |base| {
                             // imm32 from lea
                             const imm32 = zhook.mem.loadValue(u32, p + 2);

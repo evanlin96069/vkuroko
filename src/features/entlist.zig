@@ -47,20 +47,22 @@ fn EntityList(comptime is_server: bool) type {
         const Self = @This();
         const EntType = if (is_server) *IServerEntity else *IClientEntity;
 
+        allocator: std.mem.Allocator,
         ent_list: std.ArrayList(EntType),
         portal_list: std.ArrayList(PortalInfo),
         last_update: c_int = -1,
 
-        pub fn init(allocator: std.mem.Allocator) Self {
+        pub fn init(alloc: std.mem.Allocator) Self {
             return .{
-                .ent_list = std.ArrayList(EntType).init(allocator),
-                .portal_list = std.ArrayList(PortalInfo).init(allocator),
+                .allocator = alloc,
+                .ent_list = .empty,
+                .portal_list = .empty,
             };
         }
 
         pub fn deinit(self: *Self) void {
-            self.ent_list.deinit();
-            self.portal_list.deinit();
+            self.ent_list.deinit(self.allocator);
+            self.portal_list.deinit(self.allocator);
         }
 
         pub fn checkRebuildLists(self: *Self) !void {
@@ -78,9 +80,9 @@ fn EntityList(comptime is_server: bool) type {
                 var i: u32 = 0;
                 while (self.ent_list.items.len < max_ent and i < sdk.MAX_EDICTS) : (i += 1) {
                     if (self.getEntity(i)) |ent| {
-                        try self.ent_list.append(ent);
+                        try self.ent_list.append(self.allocator, ent);
                         if (self.entityIsPortal(ent)) {
-                            try self.portal_list.append(self.getPortalInfo(ent));
+                            try self.portal_list.append(self.allocator, self.getPortalInfo(ent));
                         }
                     }
                 }
@@ -89,9 +91,9 @@ fn EntityList(comptime is_server: bool) type {
                 var i: u32 = 0;
                 while (i < max_ent) : (i += 1) {
                     if (self.getEntity(i)) |ent| {
-                        try self.ent_list.append(ent);
+                        try self.ent_list.append(self.allocator, ent);
                         if (self.entityIsPortal(ent)) {
-                            try self.portal_list.append(self.getPortalInfo(ent));
+                            try self.portal_list.append(self.allocator, self.getPortalInfo(ent));
                         }
                     }
                 }
@@ -209,7 +211,7 @@ var vkrk_print_portals = ConCommand.init(.{
     .command_callback = print_portals_Fn,
 });
 
-fn print_portals_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn print_portals_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
 
     if (!server_list.isValid()) {
@@ -254,7 +256,7 @@ var vkrk_print_ents = ConCommand.init(.{
     .command_callback = print_ents_Fn,
 });
 
-fn print_ents_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn print_ents_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
 
     if (server_list.isValid()) {

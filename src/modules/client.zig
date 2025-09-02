@@ -55,7 +55,7 @@ const IBaseClientDLL = extern struct {
                 while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
                     return null;
                 })) {
-                    if (p[0] == zhook.x86.Opcode.Op1.movrmw and p[1] == zhook.x86.modrm(0b00, 0b001, 0b101)) {
+                    if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.movrmw) and p[1] == zhook.x86.modrm(0b00, 0b001, 0b101)) {
                         return zhook.mem.loadValue(**IInput, p + 2).*;
                     }
                 }
@@ -65,13 +65,13 @@ const IBaseClientDLL = extern struct {
                 while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
                     return null;
                 })) {
-                    if (p[0] == zhook.x86.Opcode.Op1.call) {
+                    if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.call)) {
                         if (zhook.utils.matchPIC(p)) |off| {
                             // imm32 from add
                             const imm32 = zhook.mem.loadValue(u32, p + off);
                             GOT_addr = @intFromPtr(p + 5) +% imm32;
                         }
-                    } else if (p[0] == zhook.x86.Opcode.Op1.lea and p[1] == zhook.x86.modrm(0b10, 0b000, 0b000)) {
+                    } else if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.lea) and p[1] == zhook.x86.modrm(0b10, 0b000, 0b000)) {
                         if (GOT_addr) |base| {
                             // imm32 from lea
                             const imm32 = zhook.mem.loadValue(u32, p + 2);
@@ -158,8 +158,8 @@ const GetDamagePosition_patterns = zhook.mem.makePatterns(switch (builtin.os.tag
     else => unreachable,
 });
 
-pub var mainViewOrigin: ?*const fn () callconv(.C) *const Vector = null;
-pub var mainViewAngles: ?*const fn () callconv(.C) *const QAngle = null;
+pub var mainViewOrigin: ?*const fn () callconv(.c) *const Vector = null;
+pub var mainViewAngles: ?*const fn () callconv(.c) *const QAngle = null;
 
 pub var client_dll: []const u8 = "";
 
@@ -248,7 +248,7 @@ fn init() bool {
     ) catch |e| blk: {
         switch (e) {
             error.PatternNotFound => core.log.debug("Cannot find CFPSPanel::ShouldDraw", .{}),
-            else => core.log.debug("Failed to hook CFPSPanel::ShouldDraw: {!}", .{e}),
+            else => core.log.debug("Failed to hook CFPSPanel::ShouldDraw: {t}", .{e}),
         }
         break :blk null;
     };

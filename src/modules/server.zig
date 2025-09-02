@@ -175,7 +175,7 @@ const CGameMovement = extern struct {
         mask: c_uint,
         collision_group: c_int,
         pm: *Trace,
-    ) callconv(.C) void;
+    ) callconv(.c) void;
 
     const TracePlayerBBoxForGroundV2Func = *const fn (
         this: *anyopaque,

@@ -15,11 +15,13 @@ pub fn link(
 ) void {
     const src_path = b.fmt("{s}/src", .{dir});
 
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "kuroko",
-        .target = target,
-        .optimize = optimize,
-        .root_source_file = b.path(b.fmt("{s}/root.zig", .{src_path})),
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .root_source_file = b.path(b.fmt("{s}/root.zig", .{src_path})),
+        }),
     });
 
     lib.addIncludePath(b.path(src_path));

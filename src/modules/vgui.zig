@@ -118,7 +118,7 @@ const IMatSystemSurface = extern struct {
         while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
             return null;
         })) {
-            if (p[0] == zhook.x86.Opcode.Op1.call) {
+            if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.call)) {
                 call_count += 1;
                 // First call in Linux is PIC
                 if (builtin.os.tag == .linux and call_count != 2) continue;
@@ -231,9 +231,9 @@ const IMatSystemSurface = extern struct {
             a: c_int,
             fmt: [*:0]const u8,
             ...,
-        ) callconv(.C) c_int = @ptrCast(self._vt[VTIndex.drawColoredText]);
+        ) callconv(.c) c_int = @ptrCast(self._vt[VTIndex.drawColoredText]);
 
-        const text = std.fmt.allocPrintZ(core.allocator, fmt, args) catch return;
+        const text = std.fmt.allocPrintSentinel(core.allocator, fmt, args, 0) catch return;
         defer core.allocator.free(text);
 
         _ = _drawColoredText(
@@ -371,7 +371,7 @@ pub fn getEngineVGui() ?*IEngineVGui {
 
 // Windows 5135
 const CUtlSymbol__String_patterns = zhook.mem.makePattern("51 66 8B 09 8B C4");
-var CUtlSymbol__String: ?*const fn (this: *sdk.CUtlSymbol) callconv(.Thiscall) [*:0]const u8 = null;
+var CUtlSymbol__String: ?*const fn (this: *sdk.CUtlSymbol) callconv(.{ .x86_thiscall = .{} }) [*:0]const u8 = null;
 
 pub var vgui_dll: []const u8 = undefined;
 

@@ -67,7 +67,7 @@ var vkrk_font_list = tier1.ConCommand.init(.{
     .command_callback = font_list_Fn,
 });
 
-fn font_list_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn font_list_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
     const font_count = vgui.FontManager.getFontCount();
     var i: u32 = 0;
@@ -256,7 +256,7 @@ const HUDElement = struct {
 var hud_elements: std.ArrayList(HUDElement) = undefined;
 
 pub fn addHUDElement(element: HUDElement) void {
-    hud_elements.append(element) catch {};
+    hud_elements.append(core.allocator, element) catch {};
 }
 
 fn onPaint() void {
@@ -289,7 +289,7 @@ fn shouldLoad() bool {
 }
 
 fn init() bool {
-    hud_elements = std.ArrayList(HUDElement).init(core.allocator);
+    hud_elements = .empty;
 
     font_DefaultFixedOutline = vgui.ischeme.getFont("DefaultFixedOutline", false);
 
@@ -312,5 +312,5 @@ fn init() bool {
 }
 
 fn deinit() void {
-    hud_elements.deinit();
+    hud_elements.deinit(core.allocator);
 }

@@ -58,26 +58,27 @@ fn init() bool {
 
 fn deinit() void {}
 
-pub const FmtFn = *const fn (fmt: [*:0]const u8, ...) callconv(.C) void;
+pub const FmtFn = *const fn (fmt: [*:0]const u8, ...) callconv(.c) void;
 pub var msg: FmtFn = undefined;
 pub var warning: FmtFn = undefined;
-pub var colorMsg: *const fn (color: *const sdk.Color, fmt: [*:0]const u8, ...) callconv(.C) void = undefined;
+pub var colorMsg: *const fn (color: *const sdk.Color, fmt: [*:0]const u8, ...) callconv(.c) void = undefined;
 pub var devMsg: FmtFn = undefined;
 pub var devWarning: FmtFn = undefined;
 pub var ready: bool = false;
 
 var memalloc: ?*MemAlloc = null;
 
+// Windows-only
 const MemAlloc = extern struct {
     _vt: *align(@alignOf(*anyopaque)) const anyopaque,
 
     const VTable = extern struct {
         _alloc: *const anyopaque,
-        alloc: *const fn (this: *anyopaque, size: usize) callconv(.Thiscall) ?[*]u8,
+        alloc: *const fn (this: *anyopaque, size: usize) callconv(.{ .x86_thiscall = .{} }) ?[*]u8,
         _realloc: *const anyopaque,
-        realloc: *const fn (this: *anyopaque, mem: *anyopaque, size: usize) callconv(.Thiscall) ?[*]u8,
+        realloc: *const fn (this: *anyopaque, mem: *anyopaque, size: usize) callconv(.{ .x86_thiscall = .{} }) ?[*]u8,
         _free: *const anyopaque,
-        free: *const fn (this: *anyopaque, mem: *anyopaque) callconv(.Thiscall) void,
+        free: *const fn (this: *anyopaque, mem: *anyopaque) callconv(.{ .x86_thiscall = .{} }) void,
     };
 
     fn vt(self: *MemAlloc) *const VTable {

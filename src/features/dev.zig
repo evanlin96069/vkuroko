@@ -32,7 +32,7 @@ var vkrk_debug_cmd = tier1.ConCommand.init(.{
     .command_callback = debug_cmd_Fn,
 });
 
-fn debug_cmd_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn debug_cmd_Fn(args: *const tier1.CCommand) callconv(.c) void {
     std.log.info("argc = {d}", .{args.argc});
     std.log.info("argv_0_size = {d}", .{args.argv_0_size});
     std.log.info("args_buffer = \"{s}\"", .{args.args_buffer});

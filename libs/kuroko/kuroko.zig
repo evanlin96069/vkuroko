@@ -51,7 +51,7 @@ pub const KrkValue = packed struct(u64) {
             context: *anyopaque,
             values: [*]const KrkValue,
             count: usize,
-        ) callconv(.C) c_int,
+        ) callconv(.c) c_int,
     ) c_int;
     extern "c" fn krk_stringFromFormat(fmt: [*:0]const u8, ...) KrkValue;
 
@@ -257,7 +257,7 @@ pub const KrkValue = packed struct(u64) {
             context: *anyopaque,
             values: [*]const KrkValue,
             count: usize,
-        ) callconv(.C) c_int,
+        ) callconv(.c) c_int,
     ) bool {
         return krk_unpackIterable(iterable, context, callback) == 1;
     }
@@ -1121,7 +1121,7 @@ pub const KrkClass = extern struct {
     _bool: *KrkObj,
     cache_index: usize,
 
-    pub const KrkCleanupCallback = ?*const fn (*KrkInstance) callconv(.C) void;
+    pub const KrkCleanupCallback = ?*const fn (*KrkInstance) callconv(.c) void;
 
     extern "c" fn krk_newClass(name: *KrkString, base: ?*KrkClass) *KrkClass;
     extern "c" fn krk_runtimeError(classs: *KrkClass, fmt: [*:0]const u8, ...) KrkValue;
@@ -1332,7 +1332,7 @@ pub const KrkNativeFn = ?*const fn (
     arg_count: c_int,
     args: [*]const KrkValue,
     has_kwargs: c_int,
-) callconv(.C) KrkValue;
+) callconv(.c) KrkValue;
 
 /// Managed binding to a C function.
 ///

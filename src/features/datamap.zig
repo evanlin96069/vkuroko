@@ -211,7 +211,7 @@ pub fn getFieldOffset(map: []const u8, field: []const u8, is_server: bool) ?usiz
 
 pub fn getField(comptime T: type, ptr: *anyopaque, offset: usize) *T {
     const base: [*]u8 = @ptrCast(ptr);
-    const field: *T = @alignCast(@ptrCast(base + offset));
+    const field: *T = @ptrCast(@alignCast(base + offset));
     return field;
 }
 
@@ -355,9 +355,9 @@ fn findMaps(
     dll_map: *std.StringHashMap(std.StringHashMap(usize)),
     class_names_set: *std.StringHashMap(void),
 ) !void {
-    var patterns = std.ArrayList(MatchedPattern).init(core.allocator);
-    defer patterns.deinit();
-    try zhook.mem.scanAllPatterns(module, datamap_patterns[0..], &patterns);
+    var patterns: std.ArrayList(MatchedPattern) = .empty;
+    defer patterns.deinit(core.allocator);
+    try zhook.mem.scanAllPatterns(module, datamap_patterns[0..], &patterns, core.allocator);
 
     for (patterns.items) |pattern| {
         const info = DataMapInfo.fromPattern(pattern);
@@ -373,9 +373,9 @@ fn findMaps(
 
     if (builtin.os.tag == .linux) {
         const GOT_addr = zhook.utils.findGOTAddr(module) orelse return;
-        var pic_patterns = std.ArrayList(MatchedPattern).init(core.allocator);
-        defer pic_patterns.deinit();
-        try zhook.mem.scanAllPatterns(module, pic_datamap_patterns[0..], &pic_patterns);
+        var pic_patterns: std.ArrayList(MatchedPattern) = .empty;
+        defer pic_patterns.deinit(core.allocator);
+        try zhook.mem.scanAllPatterns(module, pic_datamap_patterns[0..], &pic_patterns, core.allocator);
 
         for (pic_patterns.items) |pattern| {
             const info = DataMapInfo.fromPICPattern(pattern, GOT_addr);
@@ -409,7 +409,7 @@ var vkrk_datamap_print = ConCommand.init(.{
     .command_callback = datamap_print_Fn,
 });
 
-fn datamap_print_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn datamap_print_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
 
     var server_it = server_map.iterator();
@@ -461,7 +461,7 @@ fn printDatamap(map: *const std.StringHashMap(usize)) void {
     }
 }
 
-fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.C) void {
+fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.c) void {
     if (args.argc != 2) {
         std.log.info("Usage: vkrk_datamap_walk <class name>", .{});
         return;
@@ -483,7 +483,7 @@ var class_names: ?[][]const u8 = null;
 fn datamap_walk_completionFn(
     partial: [*:0]const u8,
     commands: *[ConCommand.completion_max_items][ConCommand.completion_item_length]u8,
-) callconv(.C) c_int {
+) callconv(.c) c_int {
     if (class_names) |names| {
         return completion.simpleComplete(
             std.mem.span(vkrk_datamap_walk.base.name),
