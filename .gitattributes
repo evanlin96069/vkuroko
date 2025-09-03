@@ -1,5 +1,4 @@
 libs/kuroko/src/** linguist-vendored
 *.krk linguist-language=Python gitlab-language=python
 
-*.krk text eol=lf
-*.zig text eol=lf
+* text eol=lf
