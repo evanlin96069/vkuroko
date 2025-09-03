@@ -100,18 +100,25 @@ fn getModuleWindows(comptime module_name: []const u8) ?[]const u8 {
 fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u8 {
     const file_name = module_name ++ ".so";
 
-    const allocator = std.heap.page_allocator;
-    var file = try std.fs.openFileAbsolute("/proc/self/maps", .{ .mode = .read_only });
-    defer file.close();
+    var f = try std.fs.openFileAbsolute("/proc/self/maps", .{ .mode = .read_only });
+    defer f.close();
 
-    // TODO: deprecated
-    var reader = file.deprecatedReader();
+    var buffer: [4096]u8 = undefined;
+    var file = f.reader(&buffer);
+    var r = &file.interface;
+
+    var allocator = std.heap.smp_allocator;
+    var w: std.Io.Writer.Allocating = .init(allocator);
+    defer w.deinit();
 
     var base: usize = 0;
     var end: usize = 0;
     var found = false;
 
-    while (try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', 4096)) |line| {
+    while (r.streamDelimiter(&w.writer, '\n')) |_| {
+        r.toss(1);
+
+        const line = try w.toOwnedSlice();
         defer allocator.free(line);
 
         // Example format:
@@ -152,6 +159,9 @@ fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u
         } else {
             break;
         }
+    } else |err| switch (err) {
+        std.Io.Reader.Error.EndOfStream => {},
+        else => return err,
     }
 
     if (!found) return null;
