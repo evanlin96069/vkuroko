@@ -79,7 +79,7 @@ var vkrk_run = ConCommand.init(.{
 });
 
 fn vkrk_run_Fn(args: *const tier1.CCommand) callconv(.c) void {
-    if (args.argc != 2 or args.args(1).len == 0) {
+    if (args.argc != 2 or args.arg(1).len == 0) {
         std.log.info("vkrk_run <file>", .{});
         return;
     }
@@ -89,7 +89,7 @@ fn vkrk_run_Fn(args: *const tier1.CCommand) callconv(.c) void {
     var path: std.ArrayList(u8) = .empty;
     defer path.deinit(core.allocator);
 
-    path.appendSlice(core.allocator, args.args(1)) catch return;
+    path.appendSlice(core.allocator, args.arg(1)) catch return;
     if (std.fs.path.extension(path.items).len == 0) {
         path.appendSlice(core.allocator, ext) catch return;
     }

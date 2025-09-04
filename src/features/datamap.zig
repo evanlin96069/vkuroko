@@ -501,12 +501,12 @@ fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.c) void {
         return;
     }
 
-    if (server_map.get(args.args(1))) |map| {
+    if (server_map.get(args.arg(1))) |map| {
         std.log.info("Server map:", .{});
         printDatamap(&map);
     }
 
-    if (client_map.get(args.args(1))) |map| {
+    if (client_map.get(args.arg(1))) |map| {
         std.log.info("Client map:", .{});
         printDatamap(&map);
     }

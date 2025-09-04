@@ -1073,7 +1073,7 @@ const DynConCommand = struct {
             return;
         }
 
-        const name = std.mem.span(args.argv[0]);
+        const name = args.arg(0);
         if (findDynConCommand(name)) |command| {
             VM.push(command.callback);
 
