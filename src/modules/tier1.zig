@@ -92,7 +92,14 @@ pub const CCommand = extern struct {
     pub const max_argc = 64;
     pub const max_length = 512;
 
-    pub fn args(self: *const CCommand, index: usize) []const u8 {
+    pub fn argS(self: *const CCommand) []const u8 {
+        return std.mem.span(@as([*:0]const u8, @ptrCast(&self.args_buffer)));
+    }
+
+    pub fn arg(self: *const CCommand, index: usize) []const u8 {
+        if (index >= self.argc) {
+            return "";
+        }
         return std.mem.span(self.argv[index]);
     }
 };
