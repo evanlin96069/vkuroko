@@ -20,8 +20,12 @@ var exec_page: [std.heap.page_size_min]u8 align(std.heap.page_size_min) = undefi
 
 pub var hook_manager: HookManager = undefined;
 
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-pub const allocator = gpa.allocator();
+var gpa: std.heap.DebugAllocator(.{}) = .init;
+pub const allocator =
+    if (builtin.mode == .Debug)
+        gpa.allocator()
+    else
+        std.heap.smp_allocator;
 
 const core_modules: []const *Module = mods: {
     var mods: []const *Module = &.{};
@@ -167,9 +171,11 @@ pub fn deinit() void {
     }
     event.deinit();
 
-    const leak_check = gpa.deinit();
-    if (leak_check == .leak) {
-        log.warn("Memory leak detected", .{});
+    if (builtin.mode == .Debug) {
+        const leak_check = gpa.deinit();
+        if (leak_check == .leak) {
+            log.warn("Memory leak detected", .{});
+        }
     }
 
     log.info("Plugin unloaded", .{});
