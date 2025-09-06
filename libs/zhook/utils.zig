@@ -104,23 +104,13 @@ fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u
     defer f.close();
 
     var buffer: [4096]u8 = undefined;
-    var file = f.reader(&buffer);
-    var r = &file.interface;
-
-    var allocator = std.heap.smp_allocator;
-    var w: std.Io.Writer.Allocating = .init(allocator);
-    defer w.deinit();
+    var fr = f.reader(&buffer);
 
     var base: usize = 0;
     var end: usize = 0;
     var found = false;
 
-    while (r.streamDelimiter(&w.writer, '\n')) |_| {
-        r.toss(1);
-
-        const line = try w.toOwnedSlice();
-        defer allocator.free(line);
-
+    while (fr.interface.takeDelimiterExclusive('\n')) |line| {
         // Example format:
         // de228000-de229000 r--p 00000000 00:29 1026008    /usr/lib/libstdc++.so.6.0.33
 
@@ -159,9 +149,8 @@ fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u
         } else {
             break;
         }
-    } else |err| switch (err) {
-        std.Io.Reader.Error.EndOfStream => {},
-        else => return err,
+    } else |err| {
+        return err;
     }
 
     if (!found) return null;
