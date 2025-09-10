@@ -27,10 +27,12 @@ pub fn bindAttributes(module: *KrkInstance) void {
 
 pub fn init() void {
     events.put("on_tick", std.ArrayList(KrkValue).empty) catch return;
+    events.put("on_frame", std.ArrayList(KrkValue).empty) catch return;
     events.put("on_paint", std.ArrayList(KrkValue).empty) catch return;
 
     VKrkHUD.register();
     event.tick.connect(onTick);
+    event.frame.connect(onFrame);
 }
 
 pub fn deinit() void {
@@ -98,4 +100,8 @@ const VKrkHUD = struct {
 
 fn onTick() void {
     triggerEvent("on_tick", &[_]KrkValue{});
+}
+
+fn onFrame() void {
+    triggerEvent("on_frame", &[_]KrkValue{});
 }

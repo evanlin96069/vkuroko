@@ -135,6 +135,8 @@ fn serverActivate(
 fn gameFrame(_: *anyopaque, simulating: bool) callconv(VCallConv) void {
     if (simulating) {
         event.tick.emit(.{});
+    } else {
+        event.frame.emit(.{});
     }
 }
 
