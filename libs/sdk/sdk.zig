@@ -479,7 +479,7 @@ pub const CGlobalVars = extern struct {
     frame_time: f32,
     max_clients: c_int,
     tick_count: c_int,
-    interval_per_teck: f32,
+    interval_per_tick: f32,
     interpolation_amount: f32,
     sim_ticks_this_frame: c_int,
     network_protocol: c_int,

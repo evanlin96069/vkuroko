@@ -1,0 +1,15 @@
+class GlobalVars:
+    def __repr__(self):
+        return (
+            f"GlobalVars(\n"
+            f"  real_time={self.real_time},\n"
+            f"  frame_count={self.frame_count},\n"
+            f"  absolute_frame_time={self.absolute_frame_time},\n"
+            f"  current_time={self.current_time},\n"
+            f"  frame_time={self.frame_time},\n"
+            f"  max_clients={self.max_clients},\n"
+            f"  tick_count={self.tick_count},\n"
+            f"  interpolation_amount={self.interpolation_amount},\n"
+            f"  sim_ticks_this_frame={self.sim_ticks_this_frame},\n"
+            f"  network_protocol={self.network_protocol}\n)"
+        )
