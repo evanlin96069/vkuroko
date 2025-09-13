@@ -48,6 +48,9 @@ pub fn bindAttributes(module: *KrkInstance) void {
     module.bindFunction("get_game_dir", get_game_dir).setDoc(
         \\@brief Gets the absolute path to the game directory.
     );
+    module.bindFunction("get_game_name", get_game_name).setDoc(
+        \\@brief Gets the base name of the game directory.
+    );
     module.bindFunction("is_portal", is_portal).setDoc(
         \\@brief Does game look like Portal?
     );
@@ -71,6 +74,17 @@ fn get_game_dir(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c
     }
 
     return KrkString.copyString(engine.client.getGameDirectory()).asValue();
+}
+
+fn get_game_name(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
+    _ = has_kw;
+    _ = argv;
+    if (argc != 0) {
+        return VM.getInstance().exceptions.argumentError.runtimeError("get_game_name() takes no arguments (%d given)", .{argc});
+    }
+
+    const name: [*:0]const u8 = @ptrCast(std.fs.path.basename(std.mem.span(engine.client.getGameDirectory())).ptr);
+    return KrkString.copyString(name).asValue();
 }
 
 fn is_portal(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
@@ -113,7 +127,7 @@ fn get_global_vars(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv
     _ = has_kw;
     _ = argv;
     if (argc != 0) {
-        return VM.getInstance().exceptions.argumentError.runtimeError("get_map_name() takes no arguments (%d given)", .{argc});
+        return VM.getInstance().exceptions.argumentError.runtimeError("get_global_vars() takes no arguments (%d given)", .{argc});
     }
 
     return GlobalVars.create(server.global_vars);
