@@ -64,6 +64,49 @@ pub fn getPlayerField(is_server: bool) *const PlayerField {
     return if (is_server) &server_player_field else &client_player_field;
 }
 
+fn tracePlayer(tr: *Trace, start: Vector, end: Vector, ducked: bool) void {
+    const mins: Vector = .{
+        .x = -16,
+        .y = -16,
+        .z = if (ducked) 36 else 0,
+    };
+    const maxs: Vector = .{
+        .x = 16,
+        .y = 16,
+        .z = 72,
+    };
+
+    server.gm.setMoveData();
+    defer server.gm.unsetMoveData();
+
+    const mask_playersolid = (0x1 | 0x4000 | 0x10000 | 0x2 | 0x2000000 | 0x8);
+    const collision_group_player_movement = 8;
+
+    server.gm.tracePlayerBBox(
+        &start,
+        &end,
+        &mins,
+        &maxs,
+        mask_playersolid,
+        collision_group_player_movement,
+        tr,
+    );
+}
+
+fn tracePlayerCanUnduck(unducked_origin: Vector) bool {
+    const IN_DUCK = (1 << 2);
+    if (client.iinput.getButtonBits(0) & IN_DUCK != 0) {
+        return false;
+    }
+
+    var ducked_origin = unducked_origin;
+    ducked_origin.z -= 32;
+    var tr: Trace = undefined;
+    tracePlayer(&tr, ducked_origin, unducked_origin, true);
+
+    return tr.fraction == 1.0;
+}
+
 fn traceIsPlayerGrounded(server_player: *anyopaque, position: Vector, ducked: bool, velocity: Vector) bool {
     if (velocity.z > 140.0) {
         return false;
@@ -79,7 +122,7 @@ fn traceIsPlayerGrounded(server_player: *anyopaque, position: Vector, ducked: bo
     const mins: Vector = .{
         .x = -16,
         .y = -16,
-        .z = if (ducked) 36 else 0,
+        .z = if (ducked and !tracePlayerCanUnduck(position)) 36 else 0,
     };
     const maxs: Vector = .{
         .x = 16,
@@ -259,13 +302,13 @@ const PlayerioTextHUD = struct {
     fn paint() void {
         texthud.drawTextHUD("ducked: {s}", .{if (player_info.ducked) "true" else "false"});
         texthud.drawTextHUD("grounded: {s}", .{if (player_info.grounded) "true" else "false"});
-        texthud.drawTextHUD("entity friction: {d:.2}", .{player_info.entity_friction});
+        texthud.drawTextHUD("entity friction: {d:.3}", .{player_info.entity_friction});
         texthud.drawTextHUD("water level: {d}", .{player_info.water_level});
-        texthud.drawTextHUD("accelerate: {d:.2}", .{player_info.accelerate});
-        texthud.drawTextHUD("airaccelerate: {d:.2}", .{player_info.airaccelerate});
-        texthud.drawTextHUD("friction: {d:.2}", .{player_info.friction});
-        texthud.drawTextHUD("maxspeed: {d:.2}", .{player_info.maxspeed});
-        texthud.drawTextHUD("stopspeed: {d:.2}", .{player_info.stopspeed});
+        texthud.drawTextHUD("accelerate: {d:.3}", .{player_info.accelerate});
+        texthud.drawTextHUD("airaccelerate: {d:.3}", .{player_info.airaccelerate});
+        texthud.drawTextHUD("friction: {d:.3}", .{player_info.friction});
+        texthud.drawTextHUD("maxspeed: {d:.3}", .{player_info.maxspeed});
+        texthud.drawTextHUD("stopspeed: {d:.3}", .{player_info.stopspeed});
     }
 
     fn register() void {

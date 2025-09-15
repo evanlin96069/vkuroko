@@ -90,10 +90,16 @@ const IInput = extern struct {
     _vt: [*]*const anyopaque,
 
     const VTIndex = struct {
+        const getButtonBits = 2;
         const createMove = 3;
         const decodeUserCmdFromBuffer = 7;
         const getUserCmd = 8;
     };
+
+    pub fn getButtonBits(self: *IInput, reset_state: c_int) callconv(VCallConv) c_int {
+        const _getButtonBits: *const fn (this: *anyopaque, reset_state: c_int) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.getButtonBits]);
+        return _getButtonBits(self, reset_state);
+    }
 
     const CreateMoveFunc = *const @TypeOf(hookedCreateMove);
     var origCreateMove: CreateMoveFunc = undefined;
@@ -119,7 +125,7 @@ const IInput = extern struct {
 
 pub var entlist: *IClientEntityList = undefined;
 pub var vclient: *IBaseClientDLL = undefined;
-var iinput: *IInput = undefined;
+pub var iinput: *IInput = undefined;
 
 pub var override_fps_panel = false;
 const CFPSPanel__ShouldDrawFunc = *const @TypeOf(hookedCFPSPanel__ShouldDraw);
