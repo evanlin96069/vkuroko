@@ -129,7 +129,7 @@ fn EntityList(comptime is_server: bool) type {
                     var f_class: datamap.CachedField(.{
                         .T = ?*sdk.ServerClass,
                         .map = "CBaseEntity",
-                        .field = "CBaseEntity::m_Network.CServerNetworkProperty::m_hParent",
+                        .field = "m_Network.m_hParent",
                         .is_server = true,
                         .additional_offset = -@sizeOf(CBaseHandle),
                     }) = .{};
@@ -167,13 +167,13 @@ fn EntityList(comptime is_server: bool) type {
             if (is_server) {
                 const S = struct {
                     var fields = datamap.CachedFields(.{
-                        .{ Vector, "CProp_Portal", "CBaseEntity::m_vecAbsOrigin", true },
-                        .{ QAngle, "CProp_Portal", "CBaseEntity::m_angAbsRotation", true },
-                        .{ CBaseHandle, "CProp_Portal", "CProp_Portal::m_hLinkedPortal", true },
-                        .{ bool, "CProp_Portal", "CProp_Portal::m_bIsPortal2", true },
-                        .{ bool, "CProp_Portal", "CProp_Portal::m_bActivated", true },
-                        .{ u8, "CProp_Portal", "CProp_Portal::m_iLinkageGroupID", true },
-                        .{ VMatrix, "CProp_Portal", "CProp_Portal::m_matrixThisToLinked", true },
+                        .{ Vector, "CProp_Portal", "m_vecAbsOrigin", true },
+                        .{ QAngle, "CProp_Portal", "m_angAbsRotation", true },
+                        .{ CBaseHandle, "CProp_Portal", "m_hLinkedPortal", true },
+                        .{ bool, "CProp_Portal", "m_bIsPortal2", true },
+                        .{ bool, "CProp_Portal", "m_bActivated", true },
+                        .{ u8, "CProp_Portal", "m_iLinkageGroupID", true },
+                        .{ VMatrix, "CProp_Portal", "m_matrixThisToLinked", true },
                     }){};
                 };
                 if (!S.fields.hasAll()) {

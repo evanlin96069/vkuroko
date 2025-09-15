@@ -136,10 +136,7 @@ fn addFields(
     base_offset: usize,
     prefix: []u8,
 ) !void {
-    if (datamap.base_map) |base_map| {
-        try addFields(out_map, base_map, base_offset, prefix);
-    }
-
+    // Add derived class fields first, so duplicated fields will be in base class.
     var i: u32 = 0;
     while (i < datamap.data_num_fields) : (i += 1) {
         const desc = &datamap.data_desc[i];
@@ -166,10 +163,9 @@ fn addFields(
         if (desc.field_type == .embedded) {
             const field_prefix = try std.fmt.allocPrint(
                 core.allocator,
-                "{s}{s}::{s}.",
+                "{s}{s}.",
                 .{
                     prefix,
-                    datamap.data_class_name,
                     name,
                 },
             );
@@ -179,10 +175,9 @@ fn addFields(
         } else {
             const key = try std.fmt.allocPrint(
                 core.allocator,
-                "{s}{s}::{s}",
+                "{s}{s}",
                 .{
                     prefix,
-                    datamap.data_class_name,
                     name,
                 },
             );
@@ -190,14 +185,29 @@ fn addFields(
 
             if (out_map.get(key)) |v| {
                 if (v != offset) {
-                    core.log.debug("Found a duplicated datamap field with a different offset:", .{});
-                    core.log.debug("{s}: {d}/{d}", .{ key, v, offset });
+                    // Duplicated field, add class name.
+                    const new_key = try std.fmt.allocPrint(
+                        core.allocator,
+                        "{s}{s}::{s}",
+                        .{
+                            prefix,
+                            datamap.data_class_name,
+                            name,
+                        },
+                    );
+                    errdefer core.allocator.free(new_key);
+                    try out_map.put(new_key, offset);
                 }
                 core.allocator.free(key);
             } else {
                 try out_map.put(key, offset);
             }
         }
+    }
+
+    // Add base class fields
+    if (datamap.base_map) |base_map| {
+        try addFields(out_map, base_map, base_offset, prefix);
     }
 }
 
@@ -331,22 +341,22 @@ pub fn CachedFields(comptime field_infos: anytype) type {
 
 fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize))) !void {
     const key = std.mem.span(datamap.data_class_name);
-    if (dll_map.contains(key)) {
-        return error.DuplicatedClass;
-    }
-
-    var map = std.StringHashMap(usize).init(core.allocator);
-    errdefer {
-        var it = map.iterator();
-        while (it.next()) |kv| {
-            core.allocator.free(kv.key_ptr.*);
+    if (dll_map.getPtr(key)) |p| {
+        try addFields(p, datamap, 0, "");
+    } else {
+        var map = std.StringHashMap(usize).init(core.allocator);
+        errdefer {
+            var it = map.iterator();
+            while (it.next()) |kv| {
+                core.allocator.free(kv.key_ptr.*);
+            }
+            map.deinit();
         }
-        map.deinit();
+
+        try addFields(&map, datamap, 0, "");
+
+        try dll_map.put(key, map);
     }
-
-    try addFields(&map, datamap, 0, "");
-
-    try dll_map.put(key, map);
 }
 
 fn findMaps(
@@ -364,7 +374,8 @@ fn findMaps(
 
         if (info.num_fields > 0 and doesMapLooksValid(info.map, module_range)) {
             const map: *DataMap = @ptrFromInt(info.map);
-            addMap(map, dll_map) catch {
+            addMap(map, dll_map) catch |err| {
+                core.log.debug("Failed to add datamap {s}: {t}", .{ map.data_class_name, err });
                 continue;
             };
             class_names_set.put(std.mem.span(map.data_class_name), {}) catch {};
@@ -382,7 +393,8 @@ fn findMaps(
 
             if (info.num_fields > 0 and doesMapLooksValid(info.map, module_range)) {
                 const map: *DataMap = @ptrFromInt(info.map);
-                addMap(map, dll_map) catch {
+                addMap(map, dll_map) catch |err| {
+                    core.log.debug("Failed to add datamap {s}: {t}", .{ map.data_class_name, err });
                     continue;
                 };
                 class_names_set.put(std.mem.span(map.data_class_name), {}) catch {};
