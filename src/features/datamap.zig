@@ -9,6 +9,8 @@ const ConCommand = tier1.ConCommand;
 const server = modules.server;
 const client = modules.client;
 
+const str_utils = @import("../utils/str_utils.zig");
+
 const Feature = @import("Feature.zig");
 
 const zhook = @import("zhook");
@@ -424,16 +426,36 @@ var vkrk_datamap_print = ConCommand.init(.{
 fn datamap_print_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
 
+    var server_classes = core.allocator.alloc([]const u8, server_map.count()) catch return;
+    defer core.allocator.free(server_classes);
+
+    var i: u32 = 0;
     var server_it = server_map.iterator();
-    std.log.info("Server datamaps:", .{});
-    while (server_it.next()) |kv| {
-        std.log.info("    {s}", .{kv.key_ptr.*});
+    while (server_it.next()) |kv| : (i += 1) {
+        server_classes[i] = kv.key_ptr.*;
     }
 
+    std.mem.sort([]const u8, server_classes, {}, str_utils.stringLessThan);
+
+    std.log.info("Server datamaps:", .{});
+    for (server_classes) |class| {
+        std.log.info("    {s}", .{class});
+    }
+
+    var client_classes = core.allocator.alloc([]const u8, client_map.count()) catch return;
+    defer core.allocator.free(client_classes);
+
+    i = 0;
     var client_it = client_map.iterator();
+    while (client_it.next()) |kv| : (i += 1) {
+        client_classes[i] = kv.key_ptr.*;
+    }
+
+    std.mem.sort([]const u8, client_classes, {}, str_utils.stringLessThan);
+
     std.log.info("Client datamaps:", .{});
-    while (client_it.next()) |kv| {
-        std.log.info("    {s}", .{kv.key_ptr.*});
+    for (client_classes) |class| {
+        std.log.info("    {s}", .{class});
     }
 }
 

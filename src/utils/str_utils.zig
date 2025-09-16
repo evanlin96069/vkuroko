@@ -34,3 +34,7 @@ pub fn concatToBufferZ(comptime T: type, dest: []T, slices: []const []const T) v
 
     dest[pos] = 0;
 }
+
+pub fn stringLessThan(_: void, lhs: []const u8, rhs: []const u8) bool {
+    return std.mem.order(u8, lhs, rhs) == .lt;
+}
