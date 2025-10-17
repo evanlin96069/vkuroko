@@ -35,7 +35,7 @@ var vkrk_debug_cmd = tier1.ConCommand.init(.{
 fn debug_cmd_Fn(args: *const tier1.CCommand) callconv(.c) void {
     std.log.info("argc = {d}", .{args.argc});
     std.log.info("argv_0_size = {d}", .{args.argv_0_size});
-    std.log.info("args_buffer = \"{s}\"", .{args.args_buffer});
+    std.log.info("args_buffer = \"{s}\"", .{std.mem.sliceTo(&args.args_buffer, 0)});
     var i: u32 = 0;
     while (i < args.argc) : (i += 1) {
         std.log.info("argv[{d}] = \"{s}\"", .{ i, args.argv[i] });
