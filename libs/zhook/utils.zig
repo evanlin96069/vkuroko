@@ -110,7 +110,7 @@ fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u
     var end: usize = 0;
     var found = false;
 
-    while (fr.interface.takeDelimiterExclusive('\n')) |line| {
+    while (try fr.interface.takeDelimiter('\n')) |line| {
         // Example format:
         // de228000-de229000 r--p 00000000 00:29 1026008    /usr/lib/libstdc++.so.6.0.33
 
@@ -149,8 +149,6 @@ fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u
         } else {
             break;
         }
-    } else |err| {
-        return err;
     }
 
     if (!found) return null;
