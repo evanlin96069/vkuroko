@@ -100,29 +100,28 @@ fn tracePlayerCanUnduck(unducked_origin: Vector) bool {
     }
 
     var ducked_origin = unducked_origin;
-    ducked_origin.z -= 32;
+    ducked_origin.z -= 36;
     var tr: Trace = undefined;
     tracePlayer(&tr, ducked_origin, unducked_origin, true);
 
-    return tr.fraction == 1.0;
+    if (tr.start_solid or tr.fraction != 1.0)
+        return false;
+    return true;
 }
 
-fn traceIsPlayerGrounded(server_player: *anyopaque, position: Vector, ducked: bool, velocity: Vector) bool {
+fn traceIsPlayerGrounded(server_player: *anyopaque, unducked_origin: Vector, ducked: bool, velocity: Vector) bool {
     if (velocity.z > 140.0) {
         return false;
     }
 
-    var bump_origin = position;
-    if (ducked) {
-        bump_origin.z -= 36;
-    }
+    var bump_origin = unducked_origin;
     var point = bump_origin;
     point.z -= 2;
 
     const mins: Vector = .{
         .x = -16,
         .y = -16,
-        .z = if (ducked and !tracePlayerCanUnduck(position)) 36 else 0,
+        .z = if (ducked and !tracePlayerCanUnduck(unducked_origin)) 36 else 0,
     };
     const maxs: Vector = .{
         .x = 16,
@@ -169,29 +168,39 @@ fn traceIsPlayerGrounded(server_player: *anyopaque, position: Vector, ducked: bo
     return false;
 }
 
+fn isGroundEntitySet(player: *anyopaque, m_hGroundEntity_offset: usize) bool {
+    const max_edict_bits = 11;
+    const index_mask = ((1 << max_edict_bits) - 1);
+    return (datamap.getField(c_long, player, m_hGroundEntity_offset).* & index_mask) != index_mask;
+}
+
 pub fn getPlayerInfo(player: *anyopaque, is_server: bool) PlayerInfo {
     const player_field: *const PlayerField = getPlayerField(is_server);
 
     // Basic player info
-    const position = datamap.getField(Vector, player, player_field.m_vecAbsOrigin).*;
+    const abs_origin = datamap.getField(Vector, player, player_field.m_vecAbsOrigin).*;
     const angles = engine.client.getViewAngles();
     const velocity = datamap.getField(Vector, player, player_field.m_vecAbsVelocity).*;
 
     const ducked = datamap.getField(bool, player, player_field.m_bDucked).*;
+    var unducked_origin = abs_origin;
+    if (ducked) {
+        unducked_origin.z -= 36;
+    }
 
     // Gournded
-    const index_mask = ((1 << 11) - 1);
-    var grounded = (datamap.getField(c_long, player, player_field.m_hGroundEntity).* & index_mask) != index_mask;
-    if (is_server and server.canTracePlayerBBox()) {
-        grounded = traceIsPlayerGrounded(player, position, ducked, velocity);
-    }
+    const grounded = if (is_server and server.canTracePlayerBBox())
+        traceIsPlayerGrounded(player, unducked_origin, ducked, velocity)
+    else
+        isGroundEntitySet(player, player_field.m_hGroundEntity);
+
     const water_level = datamap.getField(u8, player, player_field.m_nWaterLevel).*;
 
     // Entity friction
     var entity_friction = datamap.getField(f32, player, player_field.m_surfaceFriction).*;
     if (is_server) {
         const previously_predicted_origin = datamap.getField(Vector, player, player_field.m_vecPreviouslyPredictedOrigin).*;
-        if (!Vector.eql(position, previously_predicted_origin)) {
+        if (!Vector.eql(abs_origin, previously_predicted_origin)) {
             if (game_detection.doesGameLooksLikePortal()) {
                 entity_friction = 1.0;
             }
@@ -216,7 +225,7 @@ pub fn getPlayerInfo(player: *anyopaque, is_server: bool) PlayerInfo {
     const wish_speed_cap: f32 = if (game_detection.doesGameLooksLikePortal()) 60 else 30;
 
     return PlayerInfo{
-        .position = position,
+        .position = abs_origin,
         .angles = angles,
         .velocity = velocity,
         .ducked = ducked,
