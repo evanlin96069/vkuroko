@@ -1028,7 +1028,10 @@ const DynConCommand = struct {
 
             var i: u32 = 0;
             while (i < args.argc) : (i += 1) {
-                list.asList().append(KrkString.copyString(args.argv[i]).asValue());
+                const value = KrkString.copyString(args.argv[i]).asValue();
+                VM.push(value);
+                list.asList().append(value);
+                _ = VM.pop();
             }
 
             _ = VM.callStack(1);

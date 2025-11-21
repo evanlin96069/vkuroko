@@ -54,7 +54,10 @@ pub const VMatrix = struct {
         while (i < 4) : (i += 1) {
             var j: u32 = 0;
             while (j < 4) : (j += 1) {
-                list.asList().append(KrkValue.floatValue(mat.m[i][j]));
+                const value = KrkValue.floatValue(mat.m[i][j]);
+                VM.push(value);
+                list.asList().append(value);
+                _ = VM.pop();
             }
         }
         _ = VM.pop();

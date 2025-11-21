@@ -165,7 +165,10 @@ fn get_portals(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c)
     const list = KrkList.listOf(0, null, false);
     VM.push(list);
     for (portals.items) |*portal| {
-        list.asList().append(PortalInfo.create(portal));
+        const value = PortalInfo.create(portal);
+        VM.push(value);
+        list.asList().append(value);
+        _ = VM.pop();
     }
     _ = VM.pop();
     return list;
