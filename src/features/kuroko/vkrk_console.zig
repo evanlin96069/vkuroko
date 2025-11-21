@@ -49,6 +49,7 @@ pub fn bindAttributes(module: *KrkInstance) void {
     ConVar.class = KrkClass.makeClass(module, ConVar, "ConVar", null);
     ConVar.class.setDoc("Interface to a ConVar.");
     ConVar.class.alloc_size = @sizeOf(ConVar);
+    ConVar.class._ongcsweep = ConVar._ongcsweep;
     ConVar.class.bindMethod("is_command", ConVar.is_command).setDoc(
         \\@brief ConVar is not a command.
     );
@@ -103,6 +104,8 @@ pub fn bindAttributes(module: *KrkInstance) void {
     ConCommand.class = KrkClass.makeClass(module, ConCommand, "ConCommand", null);
     ConCommand.class.setDoc("Interface to a ConCommand.");
     ConCommand.class.alloc_size = @sizeOf(ConCommand);
+    ConCommand.class._ongcscan = ConCommand._ongcscan;
+    ConCommand.class._ongcsweep = ConCommand._ongcsweep;
     ConCommand.class.bindMethod("is_command", ConCommand.is_command).setDoc(
         \\@brief ConCommand is a command.
     );
@@ -306,6 +309,7 @@ const CVarIterator = extern struct {
 const ConVar = extern struct {
     inst: KrkInstance,
     cvar: *tier1.ConVar,
+    dyn: ?*DynConVar = null,
 
     var class: *KrkClass = undefined;
 
@@ -315,6 +319,15 @@ const ConVar = extern struct {
 
     fn asConVar(v: KrkValue) *ConVar {
         return @ptrCast(v.asObject());
+    }
+
+    fn _ongcsweep(inst: *KrkInstance) callconv(.c) void {
+        const cvar: *ConVar = @ptrCast(inst);
+        if (cvar.dyn) |dyn| {
+            dyn.unregister();
+            dyn.deinit();
+            core.allocator.destroy(dyn);
+        }
     }
 
     fn __init__(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
@@ -410,6 +423,7 @@ const ConVar = extern struct {
         dyn_cvar.register();
 
         self.cvar = &dyn_cvar.cvar;
+        self.dyn = dyn_cvar;
         return KrkValue.noneValue();
     }
 
@@ -651,6 +665,7 @@ const ConVar = extern struct {
 const ConCommand = extern struct {
     inst: KrkInstance,
     command: ?*tier1.ConCommand = null,
+    dyn: ?*DynConCommand = null,
 
     name: ?[*:0]const u8,
     help_str: ?[*:0]const u8,
@@ -665,6 +680,23 @@ const ConCommand = extern struct {
 
     fn asConCommand(v: KrkValue) *align(4) ConCommand {
         return @ptrCast(v.asObject());
+    }
+
+    fn _ongcscan(inst: *KrkInstance) callconv(.c) void {
+        const command: *align(1) ConCommand = @ptrCast(inst);
+        if (command.dyn) |dyn| {
+            kuroko.markValue(dyn.callback);
+            kuroko.markValue(dyn.completion_callback);
+        }
+    }
+
+    fn _ongcsweep(inst: *KrkInstance) callconv(.c) void {
+        const command: *align(1) ConCommand = @ptrCast(inst);
+        if (command.dyn) |dyn| {
+            dyn.unregister();
+            dyn.deinit();
+            core.allocator.destroy(dyn);
+        }
     }
 
     fn createCommand(self: KrkValue, name: ?[*:0]const u8, help_str: ?[*:0]const u8, callback: KrkValue, flags: i32, completion_callback: KrkValue) KrkValue {
@@ -705,6 +737,7 @@ const ConCommand = extern struct {
         dyn_cmd.register();
 
         inst.command = &dyn_cmd.cmd;
+        inst.dyn = dyn_cmd;
         return self;
     }
 
@@ -983,6 +1016,27 @@ const DynConVar = struct {
         DynConVar.vars = self;
     }
 
+    fn unregister(self: *DynConVar) void {
+        var cvar = DynConVar.vars;
+        var prev: ?*DynConVar = null;
+        while (cvar) |curr| : (cvar = curr.next) {
+            if (curr != self) {
+                prev = curr;
+                continue;
+            }
+
+            tier1.icvar.unregisterConCommand(@ptrCast(&curr.cvar));
+
+            if (prev) |p| {
+                p.next = curr.next;
+            } else {
+                DynConVar.vars = curr.next;
+            }
+            curr.next = null;
+            break;
+        }
+    }
+
     fn deinit(self: *DynConVar) void {
         if (self.cvar.string_value) |s| {
             tier0.allocator.free(std.mem.span(s));
@@ -1135,6 +1189,27 @@ const DynConCommand = struct {
 
         self.next = DynConCommand.cmds;
         DynConCommand.cmds = self;
+    }
+
+    fn unregister(self: *DynConCommand) void {
+        var command = DynConCommand.cmds;
+        var prev: ?*DynConCommand = null;
+        while (command) |curr| : (command = curr.next) {
+            if (curr != self) {
+                prev = curr;
+                continue;
+            }
+
+            tier1.icvar.unregisterConCommand(@ptrCast(&curr.cmd));
+
+            if (prev) |p| {
+                p.next = curr.next;
+            } else {
+                DynConCommand.cmds = curr.next;
+            }
+            curr.next = null;
+            break;
+        }
     }
 
     fn deinit(self: *DynConCommand) void {

@@ -2400,6 +2400,54 @@ pub fn parseArgs(
 extern fn krk_exec_module(src: [*:0]const u8, module_name: [*:0]const u8) c_int;
 
 /// Compile and execute a source code input as builtin module.
-pub fn execModule(src: [*:0]const u8, module_name: [*:0]const u8) bool {
+pub inline fn execModule(src: [*:0]const u8, module_name: [*:0]const u8) bool {
     return krk_exec_module(src, module_name) == 1;
+}
+
+// GC-related
+
+extern fn krk_collectGarbage() usize;
+extern fn krk_markValue(value: KrkValue) void;
+extern fn krk_markObject(object: *KrkObj) void;
+extern fn krk_markTable(table: *KrkTable) void;
+
+/// Run a cycle of the garbage collector.
+///
+/// Runs one scan-sweep cycle of the garbage collector, potentially
+/// freeing unused resources and advancing potentially-unused
+/// resources to the next stage of removal.
+///
+/// return: The number of bytes released by this collection cycle.
+pub inline fn collectGarbage() usize {
+    return krk_collectGarbage();
+}
+
+/// During a GC scan cycle, mark a value as used.
+///
+/// When defining a new type in a C extension, this function should
+/// be used by the type's _ongcscan callback to mark any values not
+/// already tracked by the garbage collector.
+///
+/// - `value` The value to mark.
+pub inline fn markValue(value: KrkValue) void {
+    krk_markValue(value);
+}
+
+/// During a GC scan cycle, mark an object as used.
+///
+/// Equivalent to krk_markValue but operates directly on an object.
+///
+/// - `object` The object to mark.
+pub inline fn markObject(object: *KrkObj) void {
+    krk_markObject(object);
+}
+
+/// During a GC scan cycle, mark the contents of a table as used.
+///
+/// Marks all keys and values in a table as used. Generally applied
+/// to the internal storage of mapping types.
+///
+/// - `table` The table to mark.
+pub inline fn markTable(table: *KrkTable) void {
+    krk_markTable(table);
 }
