@@ -34,9 +34,13 @@ const IClientEntityList = extern struct {
         return _getClientEntity(self, index);
     }
 
-    pub fn getHighestEntityIndex(self: *IClientEntityList) c_int {
+    pub fn getHighestEntityIndex(self: *IClientEntityList) ?u32 {
         const _getHighestEntityIndex: *const fn (this: *anyopaque) callconv(VCallConv) c_int = @ptrCast(self._vt[VTIndex.getHighestEntityIndex]);
-        return _getHighestEntityIndex(self);
+        const result = _getHighestEntityIndex(self);
+        if (result < 0) {
+            return null;
+        }
+        return @intCast(result);
     }
 };
 

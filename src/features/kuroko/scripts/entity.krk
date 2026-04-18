@@ -47,3 +47,13 @@ class PortalInfo:
             f"  linkage_id={self.linkage_id},\n"
             f"  matrix_this_to_linked={self.matrix_this_to_linked}\n)"
         )
+
+
+def get_player_entity(is_server=True):
+    '''Get the player as an Entity.'''
+    return get_entity(1, is_server)
+
+
+def get_portal_entities(is_server=True):
+    '''Get all portal entities.'''
+    return [e for e in get_entities(is_server) if e.get_class_name() == "CProp_Portal"]

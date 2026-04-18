@@ -20,8 +20,13 @@ const DataMap = @import("sdk").DataMap;
 
 const completion = @import("../utils/completion.zig");
 
-pub var server_map: std.StringHashMap(std.StringHashMap(usize)) = undefined;
-pub var client_map: std.StringHashMap(std.StringHashMap(usize)) = undefined;
+pub const FieldInfo = struct {
+    offset: usize,
+    field_type: DataMap.FieldType,
+};
+
+pub var server_map: std.StringHashMap(std.StringHashMap(FieldInfo)) = undefined;
+pub var client_map: std.StringHashMap(std.StringHashMap(FieldInfo)) = undefined;
 
 const datamap_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
     .windows => .{
@@ -133,7 +138,7 @@ fn doesMapLooksValid(map_addr: u32, module: []const u8) bool {
 }
 
 fn addFields(
-    out_map: *std.StringHashMap(usize),
+    out_map: *std.StringHashMap(FieldInfo),
     datamap: *DataMap,
     base_offset: usize,
     prefix: []u8,
@@ -185,8 +190,13 @@ fn addFields(
             );
             errdefer core.allocator.free(key);
 
+            const info = FieldInfo{
+                .offset = offset,
+                .field_type = desc.field_type,
+            };
+
             if (out_map.get(key)) |v| {
-                if (v != offset) {
+                if (v.offset != offset) {
                     // Duplicated field, add class name.
                     const new_key = try std.fmt.allocPrint(
                         core.allocator,
@@ -198,11 +208,11 @@ fn addFields(
                         },
                     );
                     errdefer core.allocator.free(new_key);
-                    try out_map.put(new_key, offset);
+                    try out_map.put(new_key, info);
                 }
                 core.allocator.free(key);
             } else {
-                try out_map.put(key, offset);
+                try out_map.put(key, info);
             }
         }
     }
@@ -214,6 +224,13 @@ fn addFields(
 }
 
 pub fn getFieldOffset(map: []const u8, field: []const u8, is_server: bool) ?usize {
+    if (getFieldInfo(map, field, is_server)) |info| {
+        return info.offset;
+    }
+    return null;
+}
+
+pub fn getFieldInfo(map: []const u8, field: []const u8, is_server: bool) ?FieldInfo {
     const data_map = if (is_server) &server_map else &client_map;
     if (data_map.get(map)) |m| {
         return m.get(field);
@@ -341,12 +358,12 @@ pub fn CachedFields(comptime field_infos: anytype) type {
     };
 }
 
-fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize))) !void {
+fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(FieldInfo))) !void {
     const key = std.mem.span(datamap.data_class_name);
     if (dll_map.getPtr(key)) |p| {
         try addFields(p, datamap, 0, "");
     } else {
-        var map = std.StringHashMap(usize).init(core.allocator);
+        var map = std.StringHashMap(FieldInfo).init(core.allocator);
         errdefer {
             var it = map.iterator();
             while (it.next()) |kv| {
@@ -364,7 +381,7 @@ fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(usize
 fn findMaps(
     module: []const u8,
     module_range: []const u8,
-    dll_map: *std.StringHashMap(std.StringHashMap(usize)),
+    dll_map: *std.StringHashMap(std.StringHashMap(FieldInfo)),
     class_names_set: *std.StringHashMap(void),
 ) !void {
     var patterns: std.ArrayList(MatchedPattern) = .empty;
@@ -405,7 +422,7 @@ fn findMaps(
     }
 }
 
-fn deinitMaps(dll_map: *std.StringHashMap(std.StringHashMap(usize))) void {
+fn deinitMaps(dll_map: *std.StringHashMap(std.StringHashMap(FieldInfo))) void {
     var it = dll_map.iterator();
     while (it.next()) |kv| {
         var inner_it = kv.value_ptr.iterator();
@@ -466,7 +483,7 @@ var vkrk_datamap_walk = ConCommand.init(.{
     .completion_callback = datamap_walk_completionFn,
 });
 
-fn printDatamap(map: *const std.StringHashMap(usize)) void {
+fn printDatamap(map: *const std.StringHashMap(FieldInfo)) void {
     const Field = struct {
         name: []const u8,
         offset: usize,
@@ -485,7 +502,7 @@ fn printDatamap(map: *const std.StringHashMap(usize)) void {
     while (it.next()) |kv| : (i += 1) {
         fields[i] = .{
             .name = kv.key_ptr.*,
-            .offset = kv.value_ptr.*,
+            .offset = kv.value_ptr.*.offset,
         };
     }
     std.mem.sort(Field, fields, {}, Field.compareOffset);
@@ -548,8 +565,8 @@ fn init() bool {
         client_dll_range = zhook.utils.getEntireModule("client") orelse return false;
     }
 
-    server_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
-    client_map = std.StringHashMap(std.StringHashMap(usize)).init(core.allocator);
+    server_map = std.StringHashMap(std.StringHashMap(FieldInfo)).init(core.allocator);
+    client_map = std.StringHashMap(std.StringHashMap(FieldInfo)).init(core.allocator);
 
     var class_names_set = std.StringHashMap(void).init(core.allocator);
     defer class_names_set.deinit();

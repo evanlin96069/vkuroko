@@ -87,7 +87,11 @@ fn EntityList(comptime is_server: bool) type {
                     }
                 }
             } else {
-                const max_ent = client.entlist.getHighestEntityIndex();
+                const max_ent = client.entlist.getHighestEntityIndex() orelse {
+                    // No entities
+                    return;
+                };
+
                 var i: u32 = 0;
                 while (i < max_ent) : (i += 1) {
                     if (self.getEntity(i)) |ent| {

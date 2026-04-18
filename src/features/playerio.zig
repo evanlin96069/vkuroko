@@ -357,14 +357,14 @@ fn init() bool {
     sv_airaccelerate = tier1.icvar.findVar("sv_airaccelerate") orelse return false;
 
     if (datamap.server_map.get("CBasePlayer")) |map| {
-        const m_vecAbsOrigin = map.get("m_vecAbsOrigin");
-        const m_vecAbsVelocity = map.get("m_vecAbsVelocity");
-        const m_flMaxspeed = map.get("m_flMaxspeed");
-        const m_bDucked = map.get("m_Local.m_bDucked");
-        const m_hGroundEntity = map.get("m_hGroundEntity");
-        const m_bSinglePlayerGameEnding = map.get("m_bSinglePlayerGameEnding");
-        const m_vecPreviouslyPredictedOrigin = map.get("m_vecPreviouslyPredictedOrigin");
-        const m_nWaterLevel = map.get("m_nWaterLevel");
+        const m_vecAbsOrigin = if (map.get("m_vecAbsOrigin")) |f| f.offset else null;
+        const m_vecAbsVelocity = if (map.get("m_vecAbsVelocity")) |f| f.offset else null;
+        const m_flMaxspeed = if (map.get("m_flMaxspeed")) |f| f.offset else null;
+        const m_bDucked = if (map.get("m_Local.m_bDucked")) |f| f.offset else null;
+        const m_hGroundEntity = if (map.get("m_hGroundEntity")) |f| f.offset else null;
+        const m_bSinglePlayerGameEnding = if (map.get("m_bSinglePlayerGameEnding")) |f| f.offset else null;
+        const m_vecPreviouslyPredictedOrigin = if (map.get("m_vecPreviouslyPredictedOrigin")) |f| f.offset else null;
+        const m_nWaterLevel = if (map.get("m_nWaterLevel")) |f| f.offset else null;
         if (m_vecAbsOrigin == null) {
             core.log.debug("Cannot find m_vecAbsOrigin offset", .{});
         }
@@ -416,13 +416,13 @@ fn init() bool {
     }
 
     if (datamap.client_map.get("C_BasePlayer")) |map| {
-        const m_vecAbsOrigin = map.get("m_vecAbsOrigin");
-        const m_vecAbsVelocity = map.get("m_vecAbsVelocity");
-        const m_flMaxspeed = map.get("m_flMaxspeed");
-        const m_bDucked = map.get("m_Local.m_bDucked");
-        const m_hGroundEntity = map.get("m_hGroundEntity");
-        const m_surfaceFriction = map.get("m_surfaceFriction");
-        const m_nWaterLevel = map.get("m_nWaterLevel");
+        const m_vecAbsOrigin = if (map.get("m_vecAbsOrigin")) |f| f.offset else null;
+        const m_vecAbsVelocity = if (map.get("m_vecAbsVelocity")) |f| f.offset else null;
+        const m_flMaxspeed = if (map.get("m_flMaxspeed")) |f| f.offset else null;
+        const m_bDucked = if (map.get("m_Local.m_bDucked")) |f| f.offset else null;
+        const m_hGroundEntity = if (map.get("m_hGroundEntity")) |f| f.offset else null;
+        const m_surfaceFriction = if (map.get("m_surfaceFriction")) |f| f.offset else null;
+        const m_nWaterLevel = if (map.get("m_nWaterLevel")) |f| f.offset else null;
         if (m_vecAbsOrigin == null) {
             core.log.debug("Cannot find m_vecAbsOrigin offset", .{});
         }

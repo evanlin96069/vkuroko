@@ -16,7 +16,7 @@ const KrkClass = kuroko.KrkClass;
 const KrkList = kuroko.KrkList;
 
 pub const Vector = struct {
-    var class: *KrkClass = undefined;
+    pub var class: *KrkClass = undefined;
 
     pub fn create(vec: sdk.Vector) KrkValue {
         const inst = KrkInstance.create(class);

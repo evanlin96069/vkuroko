@@ -196,7 +196,7 @@ pub const DataMap = extern struct {
     packed_offsets_computed: bool,
     packed_size: c_int,
 
-    const FieldType = enum(c_int) {
+    pub const FieldType = enum(c_int) {
         none = 0, // No type or value
         float, // Any floating point value
         string, // A string ID (return from ALLOC_STRING)
