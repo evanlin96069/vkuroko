@@ -5,7 +5,7 @@ const kuroko = @import("libs/kuroko/build.zig");
 
 const Target = enum { linux, windows };
 
-const vkrk_version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0 };
+const vkrk_version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 1 };
 
 pub fn build(b: *std.Build) void {
     const target_option: Target = b.option(Target, "target", "The target to build vkuroko for") orelse
