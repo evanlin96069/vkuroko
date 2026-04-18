@@ -349,6 +349,56 @@ fn shouldLoad() bool {
     return datamap.feature.loaded;
 }
 
+fn loadPlayerFields(map: anytype, field: *PlayerField, is_server: bool) bool {
+    const side: []const u8 = if (is_server) "server" else "client";
+    const m_vecAbsOrigin = if (map.get("m_vecAbsOrigin")) |f| f.offset else null;
+    const m_vecAbsVelocity = if (map.get("m_vecAbsVelocity")) |f| f.offset else null;
+    const m_flMaxspeed = if (map.get("m_flMaxspeed")) |f| f.offset else null;
+    const m_bDucked = if (map.get("m_Local.m_bDucked")) |f| f.offset else null;
+    const m_hGroundEntity = if (map.get("m_hGroundEntity")) |f| f.offset else null;
+    const m_nWaterLevel = if (map.get("m_nWaterLevel")) |f| f.offset else null;
+
+    if (m_vecAbsOrigin == null) core.log.debug("Cannot find {s} m_vecAbsOrigin offset", .{side});
+    if (m_vecAbsVelocity == null) core.log.debug("Cannot find {s} m_vecAbsVelocity offset", .{side});
+    if (m_flMaxspeed == null) core.log.debug("Cannot find {s} m_flMaxspeed offset", .{side});
+    if (m_bDucked == null) core.log.debug("Cannot find {s} m_Local.m_bDucked offset", .{side});
+    if (m_hGroundEntity == null) core.log.debug("Cannot find {s} m_hGroundEntity offset", .{side});
+    if (m_nWaterLevel == null) core.log.debug("Cannot find {s} m_nWaterLevel offset", .{side});
+
+    if (m_vecAbsOrigin == null or
+        m_vecAbsVelocity == null or
+        m_flMaxspeed == null or
+        m_bDucked == null or
+        m_hGroundEntity == null or
+        m_nWaterLevel == null)
+    {
+        return false;
+    }
+
+    if (is_server) {
+        const m_bSinglePlayerGameEnding = if (map.get("m_bSinglePlayerGameEnding")) |f| f.offset else null;
+        const m_vecPreviouslyPredictedOrigin = if (map.get("m_vecPreviouslyPredictedOrigin")) |f| f.offset else null;
+        if (m_bSinglePlayerGameEnding == null) core.log.debug("Cannot find {s} m_bSinglePlayerGameEnding offset", .{side});
+        if (m_vecPreviouslyPredictedOrigin == null) core.log.debug("Cannot find {s} m_vecPreviouslyPredictedOrigin offset", .{side});
+        if (m_bSinglePlayerGameEnding == null or m_vecPreviouslyPredictedOrigin == null) return false;
+        field.m_surfaceFriction = (m_bSinglePlayerGameEnding.? & ~@as(usize, @intCast(3))) - 4;
+        field.m_vecPreviouslyPredictedOrigin = m_vecPreviouslyPredictedOrigin.?;
+    } else {
+        const m_surfaceFriction = if (map.get("m_surfaceFriction")) |f| f.offset else null;
+        if (m_surfaceFriction == null) core.log.debug("Cannot find {s} m_surfaceFriction offset", .{side});
+        if (m_surfaceFriction == null) return false;
+        field.m_surfaceFriction = m_surfaceFriction.?;
+    }
+
+    field.m_vecAbsOrigin = m_vecAbsOrigin.?;
+    field.m_vecAbsVelocity = m_vecAbsVelocity.?;
+    field.m_flMaxspeed = m_flMaxspeed.?;
+    field.m_bDucked = m_bDucked.?;
+    field.m_hGroundEntity = m_hGroundEntity.?;
+    field.m_nWaterLevel = m_nWaterLevel.?;
+    return true;
+}
+
 fn init() bool {
     sv_friction = tier1.icvar.findVar("sv_friction") orelse return false;
     sv_maxspeed = tier1.icvar.findVar("sv_maxspeed") orelse return false;
@@ -357,114 +407,16 @@ fn init() bool {
     sv_airaccelerate = tier1.icvar.findVar("sv_airaccelerate") orelse return false;
 
     if (datamap.server_map.get("CBasePlayer")) |map| {
-        const m_vecAbsOrigin = if (map.get("m_vecAbsOrigin")) |f| f.offset else null;
-        const m_vecAbsVelocity = if (map.get("m_vecAbsVelocity")) |f| f.offset else null;
-        const m_flMaxspeed = if (map.get("m_flMaxspeed")) |f| f.offset else null;
-        const m_bDucked = if (map.get("m_Local.m_bDucked")) |f| f.offset else null;
-        const m_hGroundEntity = if (map.get("m_hGroundEntity")) |f| f.offset else null;
-        const m_bSinglePlayerGameEnding = if (map.get("m_bSinglePlayerGameEnding")) |f| f.offset else null;
-        const m_vecPreviouslyPredictedOrigin = if (map.get("m_vecPreviouslyPredictedOrigin")) |f| f.offset else null;
-        const m_nWaterLevel = if (map.get("m_nWaterLevel")) |f| f.offset else null;
-        if (m_vecAbsOrigin == null) {
-            core.log.debug("Cannot find m_vecAbsOrigin offset", .{});
-        }
-        if (m_vecAbsVelocity == null) {
-            core.log.debug("Cannot find m_vecAbsVelocity offset", .{});
-        }
-        if (m_flMaxspeed == null) {
-            core.log.debug("Cannot find m_flMaxspeed offset", .{});
-        }
-        if (m_bDucked == null) {
-            core.log.debug("Cannot find m_Local.m_bDucked offset", .{});
-        }
-        if (m_hGroundEntity == null) {
-            core.log.debug("Cannot find m_hGroundEntity offset", .{});
-        }
-        if (m_bSinglePlayerGameEnding == null) {
-            core.log.debug("Cannot find m_bSinglePlayerGameEnding offset", .{});
-        }
-        if (m_vecPreviouslyPredictedOrigin == null) {
-            core.log.debug("Cannot find m_vecPreviouslyPredictedOrigin offset", .{});
-        }
-        if (m_nWaterLevel == null) {
-            core.log.debug("Cannot find m_nWaterLevel offset", .{});
-        }
-
-        if (m_vecAbsOrigin == null or
-            m_vecAbsVelocity == null or
-            m_flMaxspeed == null or
-            m_bDucked == null or
-            m_hGroundEntity == null or
-            m_bSinglePlayerGameEnding == null or
-            m_vecPreviouslyPredictedOrigin == null or
-            m_nWaterLevel == null)
-        {
-            return false;
-        }
-
-        server_player_field.m_vecAbsOrigin = m_vecAbsOrigin.?;
-        server_player_field.m_vecAbsVelocity = m_vecAbsVelocity.?;
-        server_player_field.m_flMaxspeed = m_flMaxspeed.?;
-        server_player_field.m_bDucked = m_bDucked.?;
-        server_player_field.m_hGroundEntity = m_hGroundEntity.?;
-        server_player_field.m_surfaceFriction = (m_bSinglePlayerGameEnding.? & ~@as(usize, @intCast(3))) - 4;
-        server_player_field.m_vecPreviouslyPredictedOrigin = m_vecPreviouslyPredictedOrigin.?;
-        server_player_field.m_nWaterLevel = m_nWaterLevel.?;
+        if (!loadPlayerFields(map, &server_player_field, true)) return false;
     } else {
-        core.log.debug("Cannot find CBasePlayer datamap", .{});
+        core.log.debug("Cannot find server CBasePlayer datamap", .{});
         return false;
     }
 
     if (datamap.client_map.get("CBasePlayer")) |map| {
-        const m_vecAbsOrigin = if (map.get("m_vecAbsOrigin")) |f| f.offset else null;
-        const m_vecAbsVelocity = if (map.get("m_vecAbsVelocity")) |f| f.offset else null;
-        const m_flMaxspeed = if (map.get("m_flMaxspeed")) |f| f.offset else null;
-        const m_bDucked = if (map.get("m_Local.m_bDucked")) |f| f.offset else null;
-        const m_hGroundEntity = if (map.get("m_hGroundEntity")) |f| f.offset else null;
-        const m_surfaceFriction = if (map.get("m_surfaceFriction")) |f| f.offset else null;
-        const m_nWaterLevel = if (map.get("m_nWaterLevel")) |f| f.offset else null;
-        if (m_vecAbsOrigin == null) {
-            core.log.debug("Cannot find m_vecAbsOrigin offset", .{});
-        }
-        if (m_vecAbsVelocity == null) {
-            core.log.debug("Cannot find m_vecAbsVelocity offset", .{});
-        }
-        if (m_flMaxspeed == null) {
-            core.log.debug("Cannot find m_flMaxspeed offset", .{});
-        }
-        if (m_bDucked == null) {
-            core.log.debug("Cannot find m_Local.m_bDucked offset", .{});
-        }
-        if (m_hGroundEntity == null) {
-            core.log.debug("Cannot find m_hGroundEntity offset", .{});
-        }
-        if (m_surfaceFriction == null) {
-            core.log.debug("Cannot find m_surfaceFriction offset", .{});
-        }
-        if (m_nWaterLevel == null) {
-            core.log.debug("Cannot find m_nWaterLevel offset", .{});
-        }
-
-        if (m_vecAbsOrigin == null or
-            m_vecAbsVelocity == null or
-            m_flMaxspeed == null or
-            m_bDucked == null or
-            m_hGroundEntity == null or
-            m_surfaceFriction == null or
-            m_nWaterLevel == null)
-        {
-            return false;
-        }
-
-        client_player_field.m_vecAbsOrigin = m_vecAbsOrigin.?;
-        client_player_field.m_vecAbsVelocity = m_vecAbsVelocity.?;
-        client_player_field.m_flMaxspeed = m_flMaxspeed.?;
-        client_player_field.m_bDucked = m_bDucked.?;
-        client_player_field.m_hGroundEntity = m_hGroundEntity.?;
-        client_player_field.m_surfaceFriction = m_surfaceFriction.?;
-        client_player_field.m_nWaterLevel = m_nWaterLevel.?;
+        if (!loadPlayerFields(map, &client_player_field, false)) return false;
     } else {
-        core.log.debug("Cannot find C_BasePlayer datamap", .{});
+        core.log.debug("Cannot find client CBasePlayer datamap", .{});
         return false;
     }
 
