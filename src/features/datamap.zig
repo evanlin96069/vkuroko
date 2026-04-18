@@ -28,6 +28,8 @@ pub const FieldInfo = struct {
 pub var server_map: std.StringHashMap(std.StringHashMap(FieldInfo)) = undefined;
 pub var client_map: std.StringHashMap(std.StringHashMap(FieldInfo)) = undefined;
 
+var allocated_class_names: std.ArrayList([]const u8) = .empty;
+
 const datamap_patterns = zhook.mem.makePatterns(switch (builtin.os.tag) {
     .windows => .{
         "C7 05 ?? ?? ?? ?? ?? ?? ?? ?? C7 05 ?? ?? ?? ?? ?? ?? ?? ?? B8",
@@ -588,6 +590,35 @@ fn init() bool {
         deinitMaps(&server_map);
         return false;
     };
+    // Rename C_ prefixes in client_map to C (C_BaseEntity -> CBaseEntity)
+    {
+        const Entry = struct { key: []const u8, value: std.StringHashMap(FieldInfo) };
+        var to_rename: std.ArrayList(Entry) = .empty;
+        defer to_rename.deinit(core.allocator);
+
+        var it = client_map.iterator();
+        while (it.next()) |entry| {
+            if (std.mem.startsWith(u8, entry.key_ptr.*, "C_")) {
+                to_rename.append(core.allocator, .{ .key = entry.key_ptr.*, .value = entry.value_ptr.* }) catch continue;
+            }
+        }
+
+        for (to_rename.items) |item| {
+            _ = client_map.fetchRemove(item.key);
+            const new_key = std.fmt.allocPrint(core.allocator, "C{s}", .{item.key[2..]}) catch {
+                client_map.put(item.key, item.value) catch {};
+                continue;
+            };
+            client_map.put(new_key, item.value) catch {
+                client_map.put(item.key, item.value) catch {};
+                core.allocator.free(new_key);
+                continue;
+            };
+            _ = class_names_set.fetchRemove(item.key);
+            class_names_set.put(new_key, {}) catch {};
+            allocated_class_names.append(core.allocator, new_key) catch {};
+        }
+    }
 
     class_names = core.allocator.alloc([]const u8, class_names_set.count()) catch null;
     if (class_names) |names| {
@@ -619,4 +650,9 @@ fn deinit() void {
 
     deinitMaps(&server_map);
     deinitMaps(&client_map);
+
+    for (allocated_class_names.items) |name| {
+        core.allocator.free(name);
+    }
+    allocated_class_names.deinit(core.allocator);
 }

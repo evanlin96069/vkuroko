@@ -415,7 +415,7 @@ fn init() bool {
         return false;
     }
 
-    if (datamap.client_map.get("C_BasePlayer")) |map| {
+    if (datamap.client_map.get("CBasePlayer")) |map| {
         const m_vecAbsOrigin = if (map.get("m_vecAbsOrigin")) |f| f.offset else null;
         const m_vecAbsVelocity = if (map.get("m_vecAbsVelocity")) |f| f.offset else null;
         const m_flMaxspeed = if (map.get("m_flMaxspeed")) |f| f.offset else null;
