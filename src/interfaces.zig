@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const core = @import("core.zig");
+const windows = core.windows;
 
 const engine = @import("modules/engine.zig");
 
@@ -25,16 +26,23 @@ const lib_ext = switch (builtin.os.tag) {
 fn getProcAddress(comptime module_name: []const u8, comptime name: [:0]const u8) !CreateInterfaceFn {
     const lib_name = module_name ++ lib_ext;
 
-    var lib: std.DynLib = undefined;
-    if (builtin.os.tag != .windows and (std.mem.eql(u8, "server", module_name) or std.mem.eql(u8, "client", module_name))) {
-        // TODO: Implement this properly
-        var buf: [std.fs.max_path_bytes]u8 = undefined;
-        lib = try std.DynLib.open(try std.fmt.bufPrint(&buf, "{s}/bin/{s}", .{ engine.client.getGameDirectory(), lib_name }));
+    if (builtin.os.tag == .windows) {
+        const handle = windows.LoadLibraryA(lib_name) orelse return error.LibNotFound;
+        defer _ = windows.FreeLibrary(handle);
+        const ptr = windows.GetProcAddress(handle, name) orelse return error.SymbolNotFound;
+        return @ptrCast(@constCast(ptr));
     } else {
-        lib = try std.DynLib.open(lib_name);
+        var lib: std.DynLib = undefined;
+        if (std.mem.eql(u8, "server", module_name) or std.mem.eql(u8, "client", module_name)) {
+            // TODO: Implement this properly
+            var buf: [std.fs.max_path_bytes]u8 = undefined;
+            lib = try std.DynLib.open(try std.fmt.bufPrint(&buf, "{s}/bin/{s}", .{ engine.client.getGameDirectory(), lib_name }));
+        } else {
+            lib = try std.DynLib.open(lib_name);
+        }
+        defer lib.close();
+        return lib.lookup(CreateInterfaceFn, name) orelse return error.SymbolNotFound;
     }
-    defer lib.close();
-    return lib.lookup(CreateInterfaceFn, name) orelse return error.SymbolNotFound;
 }
 
 pub fn getFactory(comptime module_name: []const u8) ?CreateInterfaceFn {

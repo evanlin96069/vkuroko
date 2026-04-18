@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
     });
     lib.link_z_notext = true;
 
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     kuroko.link(b, "libs/kuroko", lib, std.builtin.OptimizeMode.ReleaseFast, target);
 
     const zhook = b.addModule("zhook", .{

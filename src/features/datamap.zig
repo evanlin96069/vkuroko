@@ -281,56 +281,31 @@ pub fn CachedField(comptime field: struct {
 }
 
 pub fn CachedFields(comptime field_infos: anytype) type {
-    comptime var tuple_fields: [field_infos.len]std.builtin.Type.StructField = undefined;
-    inline for (field_infos, &tuple_fields, 0..) |info, *field, field_idx| {
+    comptime var field_types: [field_infos.len]type = undefined;
+    inline for (field_infos, &field_types) |info, *ft| {
         const additional_offset = switch (info.len) {
             4 => 0,
             5 => info[4],
             else => @compileError("field info should have 4 or 5 elements"),
         };
 
-        const FieldTy = CachedField(.{
+        ft.* = CachedField(.{
             .T = info[0],
             .map = info[1],
             .field = info[2],
             .is_server = info[3],
             .additional_offset = additional_offset,
         });
-
-        field.* = .{
-            .name = std.fmt.comptimePrint("{d}", .{field_idx}),
-            .type = FieldTy,
-            .default_value_ptr = null,
-            .is_comptime = false,
-            .alignment = @alignOf(FieldTy),
-        };
     }
 
-    const FieldTuple = @Type(.{ .@"struct" = .{
-        .is_tuple = true,
-        .layout = .auto,
-        .decls = &.{},
-        .fields = &tuple_fields,
-    } });
+    const FieldTuple = @Tuple(&field_types);
 
-    comptime var return_tuple_fields: [field_infos.len]std.builtin.Type.StructField = undefined;
-    inline for (field_infos, &return_tuple_fields, 0..) |info, *field, field_idx| {
-        const FieldTy = ?*info[0];
-        field.* = .{
-            .name = std.fmt.comptimePrint("{d}", .{field_idx}),
-            .type = FieldTy,
-            .default_value_ptr = null,
-            .is_comptime = false,
-            .alignment = @alignOf(FieldTy),
-        };
+    comptime var return_field_types: [field_infos.len]type = undefined;
+    inline for (field_infos, &return_field_types) |info, *ft| {
+        ft.* = ?*info[0];
     }
 
-    const ReturnTuple = @Type(.{ .@"struct" = .{
-        .is_tuple = true,
-        .layout = .auto,
-        .decls = &.{},
-        .fields = &return_tuple_fields,
-    } });
+    const ReturnTuple = @Tuple(&return_field_types);
 
     return struct {
         const Self = @This();

@@ -1,9 +1,11 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+const core = @import("../core.zig");
+const windows = core.windows;
+
 const str_utils = @import("str_utils.zig");
 
-const windows = @import("../core.zig").windows;
 const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const ConCommand = tier1.ConCommand;
@@ -210,11 +212,11 @@ pub const FileCompletion = struct {
                     }
                 }
             } else {
-                var dir = try std.fs.openDirAbsolute(path, .{ .iterate = true });
+                var dir = try std.Io.Dir.openDirAbsolute(core.io, path, .{ .iterate = true });
                 var walker = try dir.walk(self.allocator);
                 defer walker.deinit();
 
-                while (try walker.next()) |entry| {
+                while (try walker.next(core.io)) |entry| {
                     const name = entry.basename;
                     switch (entry.kind) {
                         .directory => {

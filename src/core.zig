@@ -11,10 +11,14 @@ const colorLog = @import("log.zig").colorLog;
 
 pub const windows = @cImport({
     @cDefine("WIN32_LEAN_AND_MEAN", "1");
+    @cDefine("_X86_", "1");
     @cInclude("windows.h");
 });
 
 pub const log = std.log.scoped(.vkuroko);
+
+var threaded_io: std.Io.Threaded = .init_single_threaded;
+pub const io = threaded_io.io();
 
 var exec_page: [std.heap.page_size_min]u8 align(std.heap.page_size_min) = undefined;
 
@@ -87,10 +91,18 @@ pub fn init() bool {
 
     hook_manager = HookManager.init(allocator, exec_page[0..]);
     // mprotect after hook manager init so we can always deinit hook manager on unload
-    std.posix.mprotect(exec_page[0..], 0b111) catch {
-        log.err("Failed to setup memory for function hooking", .{});
-        return false;
-    };
+    if (builtin.os.tag == .windows) {
+        var old_protect: windows.DWORD = undefined;
+        if (windows.VirtualProtect(@ptrCast(&exec_page), exec_page.len, 0x40, &old_protect) == 0) {
+            log.err("Failed to setup memory for function hooking", .{});
+            return false;
+        }
+    } else {
+        if (std.c.mprotect(@ptrCast(&exec_page), exec_page.len, .{ .READ = true, .WRITE = true, .EXEC = true }) != 0) {
+            log.err("Failed to setup memory for function hooking", .{});
+            return false;
+        }
+    }
 
     var all_modules_loaded: bool = true;
     for (modules) |module| {

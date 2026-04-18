@@ -24,7 +24,7 @@ More bindings and TAS support are still being developed.
 
 ## Build
 
-Use [zig 0.15.2](https://ziglang.org/download/#release-0.15.2)
+Use [zig 0.16.0](https://ziglang.org/download/#release-0.16.0)
 
 The currently running platform is the default build target:
 

@@ -1,6 +1,10 @@
 const std = @import("std");
 const sdk = @import("sdk");
+
+const core = @import("core.zig");
+
 const tier0 = @import("modules.zig").tier0;
+
 const PrintContext = struct {
     writer: std.Io.Writer,
     mode: union(enum) {
@@ -41,11 +45,11 @@ const PrintContext = struct {
 
 // TODO: the mutex is a stopgap solution, but really we should just send
 // this stuff over to the main thread
-var log_mutex: std.Thread.Mutex = .{};
+var log_mutex: std.Io.Mutex = .init;
 
 pub fn log(
     comptime level: std.log.Level,
-    comptime scope: @Type(.enum_literal),
+    comptime scope: @EnumLiteral(),
     comptime format: []const u8,
     args: anytype,
 ) void {
@@ -75,8 +79,8 @@ pub fn log(
         },
     };
 
-    log_mutex.lock();
-    defer log_mutex.unlock();
+    log_mutex.lockUncancelable(core.io);
+    defer log_mutex.unlock(core.io);
 
     const scope_prefix = if (scope == .default) "" else ("[" ++ @tagName(scope) ++ "] ");
     print_ctx.writer.print(scope_prefix ++ format ++ "\n", args) catch unreachable;
@@ -101,8 +105,8 @@ pub fn colorLog(
         },
     };
 
-    log_mutex.lock();
-    defer log_mutex.unlock();
+    log_mutex.lockUncancelable(core.io);
+    defer log_mutex.unlock(core.io);
 
     print_ctx.writer.print(format ++ "\n", args) catch unreachable;
     print_ctx.writer.flush() catch unreachable;

@@ -6,6 +6,7 @@ const mem = @import("mem.zig");
 
 const windows = @cImport({
     @cDefine("WIN32_LEAN_AND_MEAN", "1");
+    @cDefine("_X86_", "1");
     @cInclude("windows.h");
     @cInclude("psapi.h");
 });
@@ -42,11 +43,13 @@ pub fn patchCode(addr: [*]u8, data: []const u8, restore_protect: u32) !void {
     if (builtin.os.tag == .windows) {
         var old_protect: windows.DWORD = undefined;
 
-        try std.os.windows.VirtualProtect(addr, data.len, windows.PAGE_EXECUTE_READWRITE, &old_protect);
+        if (windows.VirtualProtect(@ptrCast(addr), data.len, windows.PAGE_EXECUTE_READWRITE, &old_protect) == 0)
+            return error.VirtualProtect;
         @memcpy(addr, data);
 
         _ = windows.FlushInstructionCache(windows.GetCurrentProcess(), addr, data.len);
-        try std.os.windows.VirtualProtect(addr, data.len, old_protect, &old_protect);
+        if (windows.VirtualProtect(@ptrCast(addr), data.len, old_protect, &old_protect) == 0)
+            return error.VirtualProtect;
     } else {
         const page_size = std.heap.page_size_min;
         const addr_int = @intFromPtr(addr);
@@ -54,14 +57,14 @@ pub fn patchCode(addr: [*]u8, data: []const u8, restore_protect: u32) !void {
         const page_end = addr_int + data.len;
         const page_len = (page_end - page_start + page_size - 1) & ~(page_size - 1);
 
-        const prot_all = 0b111; // rwx
+        const prot_all: std.c.PROT = .{ .READ = true, .WRITE = true, .EXEC = true };
 
         if (std.c.mprotect(@ptrFromInt(page_start), page_len, prot_all) != 0)
             return error.MProtectWritable;
 
         @memcpy(addr, data);
 
-        if (std.c.mprotect(@ptrFromInt(page_start), page_len, restore_protect) != 0)
+        if (std.c.mprotect(@ptrFromInt(page_start), page_len, @bitCast(restore_protect)) != 0)
             return error.MProtectRestore;
     }
 }
@@ -100,11 +103,14 @@ fn getModuleWindows(comptime module_name: []const u8) ?[]const u8 {
 fn getModuleLinux(comptime module_name: []const u8, permission: u32) !?[]const u8 {
     const file_name = module_name ++ ".so";
 
-    var f = try std.fs.openFileAbsolute("/proc/self/maps", .{ .mode = .read_only });
-    defer f.close();
+    var threaded_io: std.Io.Threaded = .init_single_threaded;
+    const io = threaded_io.io();
+
+    var f = try std.Io.Dir.openFileAbsolute(io, "/proc/self/maps", .{});
+    defer f.close(io);
 
     var buffer: [4096]u8 = undefined;
-    var fr = f.reader(&buffer);
+    var fr = f.reader(io, &buffer);
 
     var base: usize = 0;
     var end: usize = 0;

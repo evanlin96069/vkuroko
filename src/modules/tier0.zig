@@ -4,6 +4,7 @@ const builtin = @import("builtin");
 const sdk = @import("sdk");
 
 const Module = @import("Module.zig");
+const windows = @import("../core.zig").windows;
 
 const lib_name = switch (builtin.os.tag) {
     .windows => "tier0.dll",
@@ -37,6 +38,32 @@ pub var module: Module = .{
 };
 
 fn init() bool {
+    if (builtin.os.tag == .windows) {
+        return initWindows();
+    } else {
+        return initPosix();
+    }
+}
+
+fn initWindows() bool {
+    const handle = windows.LoadLibraryA(lib_name) orelse return false;
+    defer _ = windows.FreeLibrary(handle);
+
+    inline for (comptime std.meta.fieldNames(@TypeOf(names))) |field| {
+        const func = &@field(@This(), field);
+        const name = @field(names, field);
+        const ptr = windows.GetProcAddress(handle, name) orelse return false;
+        func.* = @ptrCast(@constCast(ptr));
+    }
+
+    const memalloc_ptr = windows.GetProcAddress(handle, "g_pMemAlloc") orelse return false;
+    memalloc = @as(*const *MemAlloc, @ptrCast(@alignCast(@constCast(memalloc_ptr)))).*;
+
+    ready = true;
+    return true;
+}
+
+fn initPosix() bool {
     var lib = std.DynLib.open(lib_name) catch return false;
     defer lib.close();
 
@@ -44,11 +71,6 @@ fn init() bool {
         const func = &@field(@This(), field);
         const name = @field(names, field);
         func.* = lib.lookup(@TypeOf(func.*), name) orelse return false;
-    }
-
-    // Linux Source doesn't seem to bother with the custom allocator stuff at all.
-    if (builtin.os.tag == .windows) {
-        memalloc = (lib.lookup(**MemAlloc, "g_pMemAlloc") orelse return false).*;
     }
 
     ready = true;

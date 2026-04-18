@@ -24,9 +24,9 @@ pub fn link(
         }),
     });
 
-    lib.addIncludePath(b.path(src_path));
+    lib.root_module.addIncludePath(b.path(src_path));
 
-    lib.addCSourceFiles(.{
+    lib.root_module.addCSourceFiles(.{
         .root = b.path(src_path),
         .files = &.{
             "modules/module_dis.c",
@@ -80,7 +80,7 @@ pub fn link(
         },
     });
 
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
 
-    step.linkLibrary(lib);
+    step.root_module.linkLibrary(lib);
 }

@@ -258,7 +258,7 @@ pub const DataMap = extern struct {
     };
 };
 
-pub const Color = packed struct {
+pub const Color = packed struct(u32) {
     r: u8,
     g: u8,
     b: u8,
