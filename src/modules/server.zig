@@ -373,28 +373,24 @@ fn init() bool {
         {
             if (CGameMovement.use_player_minsmaxs_v2) {
                 CGameMovement.origGetPlayerMinsV2 = core.hook_manager.hookVMT(
-                    CGameMovement.GetPlayerMinsMaxsFuncV2,
                     gm._vt,
                     CGameMovement.VTIndex.getPlayerMins,
                     CGameMovement.hookedGetPlayerMinsV2,
                 ) catch null;
 
                 CGameMovement.origGetPlayerMaxsV2 = core.hook_manager.hookVMT(
-                    CGameMovement.GetPlayerMinsMaxsFuncV2,
                     gm._vt,
                     CGameMovement.VTIndex.getPlayerMaxs,
                     CGameMovement.hookedGetPlayerMaxsV2,
                 ) catch null;
             } else {
                 CGameMovement.origGetPlayerMinsV1 = core.hook_manager.hookVMT(
-                    CGameMovement.GetPlayerMinsMaxsFuncV1,
                     gm._vt,
                     CGameMovement.VTIndex.getPlayerMins,
                     CGameMovement.hookedGetPlayerMinsV1,
                 ) catch null;
 
                 CGameMovement.origGetPlayerMaxsV1 = core.hook_manager.hookVMT(
-                    CGameMovement.GetPlayerMinsMaxsFuncV1,
                     gm._vt,
                     CGameMovement.VTIndex.getPlayerMaxs,
                     CGameMovement.hookedGetPlayerMaxsV1,

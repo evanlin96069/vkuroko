@@ -30,16 +30,16 @@ pub fn deinit(self: *HookManager) usize {
     return count;
 }
 
-pub fn findAndHook(self: *HookManager, T: type, module: []const u8, patterns: []const []const ?u8, target: *const anyopaque) !T {
+pub fn findAndHook(self: *HookManager, module: []const u8, patterns: []const []const ?u8, target: anytype) !*const @TypeOf(target) {
     const match = mem.scanUniquePatterns(module, patterns) orelse {
         return error.PatternNotFound;
     };
 
-    return self.hookDetour(T, match.ptr, target);
+    return self.hookDetour(match.ptr, target);
 }
 
-pub fn hookVMT(self: *HookManager, T: type, vt: [*]*const anyopaque, index: usize, target: *const anyopaque) !T {
-    var hook = try Hook.hookVMT(vt, index, target);
+pub fn hookVMT(self: *HookManager, vt: [*]*const anyopaque, index: usize, target: anytype) !*const @TypeOf(target) {
+    var hook = try Hook.hookVMT(vt, index, @ptrCast(&target));
     errdefer hook.unhook() catch {};
 
     try self.hooks.append(self.allocator, hook);
@@ -47,8 +47,8 @@ pub fn hookVMT(self: *HookManager, T: type, vt: [*]*const anyopaque, index: usiz
     return @ptrCast(hook.orig.?);
 }
 
-pub fn hookDetour(self: *HookManager, T: type, func: *const anyopaque, target: *const anyopaque) !T {
-    var hook = try Hook.hookDetour(@constCast(func), target, self.exec_page);
+pub fn hookDetour(self: *HookManager, func: *const anyopaque, target: anytype) !*const @TypeOf(target) {
+    var hook = try Hook.hookDetour(@constCast(func), @ptrCast(&target), self.exec_page);
     errdefer hook.unhook() catch {};
 
     try self.hooks.append(self.allocator, hook);

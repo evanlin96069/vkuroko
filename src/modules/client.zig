@@ -208,7 +208,6 @@ fn init() bool {
         iinput = _iinput;
 
         IInput.origCreateMove = core.hook_manager.hookVMT(
-            IInput.CreateMoveFunc,
             iinput._vt,
             IInput.VTIndex.createMove,
             IInput.hookedCreateMove,
@@ -218,7 +217,6 @@ fn init() bool {
         };
 
         IInput.origDecodeUserCmdFromBuffer = core.hook_manager.hookVMT(
-            IInput.DecodeUserCmdFromBufferFunc,
             iinput._vt,
             IInput.VTIndex.decodeUserCmdFromBuffer,
             IInput.hookedDecodeUserCmdFromBuffer,
@@ -251,7 +249,6 @@ fn init() bool {
     }
 
     origCFPSPanel__ShouldDraw = core.hook_manager.findAndHook(
-        CFPSPanel__ShouldDrawFunc,
         client_dll,
         CFPSPanel__ShouldDraw_patterns,
         hookedCFPSPanel__ShouldDraw,

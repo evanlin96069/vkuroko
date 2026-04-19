@@ -454,7 +454,6 @@ fn init() bool {
     }
 
     IPanel.origPaintTraverse = core.hook_manager.hookVMT(
-        IPanel.PaintTraverseFunc,
         ipanel._vt,
         IPanel.VTIndex.paintTraverse,
         IPanel.hookedPaintTraverse,
