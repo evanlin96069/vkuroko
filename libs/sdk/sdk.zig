@@ -83,12 +83,12 @@ pub const CBaseHandle = extern struct {
         return self.index != INVALID_EHANDLE_INDEX;
     }
 
-    pub fn getEntryIndex(self: *const CBaseHandle) c_int {
+    pub fn getEntryIndex(self: *const CBaseHandle) u32 {
         return @intCast(self.index & ENT_ENTRY_MASK);
     }
 
-    pub fn getSerialNumber(self: *const CBaseHandle) c_int {
-        return self.index >> NUM_ENT_ENTRY_BITS;
+    pub fn getSerialNumber(self: *const CBaseHandle) u32 {
+        return @intCast(self.index >> NUM_ENT_ENTRY_BITS);
     }
 };
 

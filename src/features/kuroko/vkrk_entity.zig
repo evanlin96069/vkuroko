@@ -75,6 +75,7 @@ pub const PortalInfo = struct {
 pub const Entity = extern struct {
     inst: KrkInstance,
     index: u32,
+    serial_number: u32,
     is_server: bool,
 
     var class: *KrkClass = undefined;
@@ -90,14 +91,33 @@ pub const Entity = extern struct {
     fn resolveEntity(self: *const Entity) ?*anyopaque {
         if (self.is_server) {
             if (entlist.server_list.getEntity(self.index)) |ent| {
+                if (ent.getRefEHandle().getSerialNumber() != self.serial_number) {
+                    return null;
+                }
                 return @ptrCast(ent);
             }
         } else {
             if (entlist.client_list.getEntity(self.index)) |ent| {
+                if (ent.getRefEHandle().getSerialNumber() != self.serial_number) {
+                    return null;
+                }
                 return @ptrCast(ent);
             }
         }
         return null;
+    }
+
+    fn getSerialNumber(index: u32, is_server: bool) u32 {
+        if (is_server) {
+            if (entlist.server_list.getEntity(index)) |ent| {
+                return ent.getRefEHandle().getSerialNumber();
+            }
+        } else {
+            if (entlist.client_list.getEntity(index)) |ent| {
+                return ent.getRefEHandle().getSerialNumber();
+            }
+        }
+        return 0;
     }
 
     fn getClassName(self: *const Entity) ?[*:0]const u8 {
@@ -272,6 +292,7 @@ pub const Entity = extern struct {
             return VM.getInstance().exceptions.valueError.runtimeError("Entity index out of range", .{});
         };
         self.is_server = (i_is_server != 0);
+        self.serial_number = Entity.getSerialNumber(self.index, self.is_server);
 
         return KrkValue.noneValue();
     }
@@ -577,11 +598,12 @@ fn get_portals(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c)
     return list;
 }
 
-fn createEntityInstance(index: u32, is_server: bool) KrkValue {
+fn createEntityInstance(handle: sdk.CBaseHandle, is_server: bool) KrkValue {
     const inst = KrkInstance.create(Entity.class);
     VM.push(inst.asValue());
     const ent: *Entity = @ptrCast(inst);
-    ent.index = index;
+    ent.index = handle.getEntryIndex();
+    ent.serial_number = handle.getSerialNumber();
     ent.is_server = is_server;
     return VM.pop();
 }
@@ -608,17 +630,17 @@ fn get_entity(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) 
     const is_server = (i_is_server != 0);
 
     // Check entity exists
-    if (is_server) {
-        if (entlist.server_list.getEntity(u_index) == null) {
-            return KrkValue.noneValue();
+    const handle = blk: {
+        if (is_server) {
+            const ent = entlist.server_list.getEntity(u_index) orelse return KrkValue.noneValue();
+            break :blk ent.getRefEHandle().*;
+        } else {
+            const ent = entlist.client_list.getEntity(u_index) orelse return KrkValue.noneValue();
+            break :blk ent.getRefEHandle().*;
         }
-    } else {
-        if (entlist.client_list.getEntity(u_index) == null) {
-            return KrkValue.noneValue();
-        }
-    }
+    };
 
-    return createEntityInstance(u_index, is_server);
+    return createEntityInstance(handle, is_server);
 }
 
 fn get_entities(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c) KrkValue {
@@ -645,8 +667,8 @@ fn get_entities(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c
         var i: u32 = 0;
         const max_ent: u32 = sdk.MAX_EDICTS;
         while (i < max_ent) : (i += 1) {
-            if (entlist.server_list.getEntity(i) != null) {
-                const ent_val = createEntityInstance(i, is_server);
+            if (entlist.server_list.getEntity(i)) |ent| {
+                const ent_val = createEntityInstance(ent.getRefEHandle().*, is_server);
                 VM.push(ent_val);
                 list.asList().append(ent_val);
                 _ = VM.pop();
@@ -659,8 +681,8 @@ fn get_entities(argc: c_int, argv: [*]const KrkValue, has_kw: c_int) callconv(.c
         };
         var i: u32 = 0;
         while (i < max_ent) : (i += 1) {
-            if (entlist.client_list.getEntity(i) != null) {
-                const ent_val = createEntityInstance(i, is_server);
+            if (entlist.client_list.getEntity(i)) |ent| {
+                const ent_val = createEntityInstance(ent.getRefEHandle().*, is_server);
                 VM.push(ent_val);
                 list.asList().append(ent_val);
                 _ = VM.pop();

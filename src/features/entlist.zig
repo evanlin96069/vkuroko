@@ -248,7 +248,10 @@ fn print_portals_Fn(args: *const tier1.CCommand) callconv(.c) void {
                 portal.ang.y,
                 portal.ang.z,
                 portal.linkage_id,
-                if (portal.linked_handle.isValid()) portal.linked_handle.getEntryIndex() else -1,
+                if (portal.linked_handle.isValid())
+                    @as(i32, @intCast(portal.linked_handle.getEntryIndex()))
+                else
+                    -1,
             },
         );
     }
