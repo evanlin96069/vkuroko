@@ -65,7 +65,8 @@ const CGameMovement = extern struct {
     var _maxs: *const Vector = undefined;
 
     const GetPlayerMinsMaxsFuncV1 = *const fn (this: *const CGameMovement) callconv(VCallConv) *const Vector;
-    const GetPlayerMinsMaxsFuncV2 = *const fn (this: *const CGameMovement, out: *Vector) callconv(VCallConv) void;
+    // Original signature is `virtual Vector GetPlayerMins(void) const;` but we want to avoid calling convention weirdness.
+    const GetPlayerMinsMaxsFuncV2 = *const fn (this: *const CGameMovement, sret: *Vector) callconv(VCallConv) *Vector;
 
     var origGetPlayerMinsV1: ?GetPlayerMinsMaxsFuncV1 = undefined;
     var origGetPlayerMinsV2: ?GetPlayerMinsMaxsFuncV2 = undefined;
@@ -77,14 +78,12 @@ const CGameMovement = extern struct {
         return origGetPlayerMinsV1.?(this);
     }
 
-    fn hookedGetPlayerMinsV2(this: *const CGameMovement, out: *Vector) callconv(VCallConv) void {
-        @setRuntimeSafety(false);
-
+    fn hookedGetPlayerMinsV2(this: *const CGameMovement, sret: *Vector) callconv(VCallConv) *Vector {
         if (override_minmax) {
-            out.* = _mins.*;
-            return;
+            sret.* = _mins.*;
+            return sret;
         }
-        origGetPlayerMinsV2.?(this, out);
+        return origGetPlayerMinsV2.?(this, sret);
     }
 
     var origGetPlayerMaxsV1: ?GetPlayerMinsMaxsFuncV1 = undefined;
@@ -97,14 +96,12 @@ const CGameMovement = extern struct {
         return origGetPlayerMaxsV1.?(this);
     }
 
-    fn hookedGetPlayerMaxsV2(this: *const CGameMovement, out: *Vector) callconv(VCallConv) void {
-        @setRuntimeSafety(false);
-
+    fn hookedGetPlayerMaxsV2(this: *const CGameMovement, sret: *Vector) callconv(VCallConv) *Vector {
         if (override_minmax) {
-            out.* = _maxs.*;
-            return;
+            sret.* = _maxs.*;
+            return sret;
         }
-        origGetPlayerMaxsV2.?(this, out);
+        return origGetPlayerMaxsV2.?(this, sret);
     }
 
     var data: CMoveData = undefined;
