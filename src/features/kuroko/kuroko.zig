@@ -203,14 +203,28 @@ fn deinit() void {
 }
 
 export fn krk_fwrite(ptr: [*]const u8, size_of_type: usize, item_count: usize, stream: *std.c.FILE) usize {
+    // tier0 print functions use a 5020 byte internal buffer. Use 4096 to be safe.
+    const chunk_size = 4096;
+    const total = size_of_type * item_count;
+
     if (@intFromPtr(stdout) == @intFromPtr(stream)) {
-        tier0.msg("%s", ptr);
-        return size_of_type * item_count;
+        var off: usize = 0;
+        while (off < total) {
+            const len: c_int = @min(total - off, chunk_size);
+            tier0.msg("%.*s", len, ptr + off);
+            off += @intCast(len);
+        }
+        return total;
     }
 
     if (@intFromPtr(stderr) == @intFromPtr(stream)) {
-        tier0.warning("%s", ptr);
-        return size_of_type * item_count;
+        var off: usize = 0;
+        while (off < total) {
+            const len: c_int = @min(total - off, chunk_size);
+            tier0.warning("%.*s", len, ptr + off);
+            off += @intCast(len);
+        }
+        return total;
     }
 
     return std.c.fwrite(ptr, size_of_type, item_count, stream);

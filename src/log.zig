@@ -35,9 +35,16 @@ const PrintContext = struct {
             skip += std.mem.indexOfScalar(u8, bytes[skip..], 'm') orelse break;
         }
         const str = bytes[skip..];
-        switch (ctx.mode) {
-            .color => |c| tier0.colorMsg(&c, "%.*s", str.len, str.ptr),
-            .dev => tier0.devMsg("%.*s", str.len, str.ptr),
+        // tier0 print functions use a 5020 byte internal buffer. Use 4096 to be safe.
+        const chunk_size = 4096;
+        var off: usize = 0;
+        while (off < str.len) {
+            const len: c_int = @min(str.len - off, chunk_size);
+            switch (ctx.mode) {
+                .color => |c| tier0.colorMsg(&c, "%.*s", len, str.ptr + off),
+                .dev => tier0.devMsg("%.*s", len, str.ptr + off),
+            }
+            off += @intCast(len);
         }
         return bytes.len;
     }
