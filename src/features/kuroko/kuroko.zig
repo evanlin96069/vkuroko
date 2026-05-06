@@ -49,10 +49,11 @@ var vkrk_interpret = ConCommand.init(.{
 
 fn printResult(result: KrkValue) void {
     var sb: StringBuilder = std.mem.zeroes(StringBuilder);
-    if (!sb.pushStringFormat(" => %R", .{result.value})) {
+    if (!sb.pushStringFormat(" => %R\n", .{result.value})) {
         VM.dumpTraceback();
     } else {
-        std.log.info("{s}", .{sb.toString()});
+        const s = sb.toString();
+        _ = krk_fwrite(s.ptr, 1, s.len, stdout);
     }
     sb.discard();
 }
@@ -203,8 +204,10 @@ fn deinit() void {
 }
 
 export fn krk_fwrite(ptr: [*]const u8, size_of_type: usize, item_count: usize, stream: *std.c.FILE) usize {
-    // tier0 print functions use a 5020 byte internal buffer. Use 4096 to be safe.
-    const chunk_size = 4096;
+    // tier0 print functions drops the message slightly if it exceeds 5020 bytes.
+    // When printing too much characters it sometimes output broken text, so use a smaller chunk size to be safe.
+    // TODO: Don't cut off utf-8 code points in the middle.
+    const chunk_size = 1024;
     const total = size_of_type * item_count;
 
     if (@intFromPtr(stdout) == @intFromPtr(stream)) {
@@ -231,6 +234,9 @@ export fn krk_fwrite(ptr: [*]const u8, size_of_type: usize, item_count: usize, s
 }
 
 export fn krk_fflush(stream: *std.c.FILE) c_int {
-    _ = stream;
+    if (@intFromPtr(stdout) == @intFromPtr(stream) or @intFromPtr(stderr) == @intFromPtr(stream)) {
+        // no-op since tier0 print functions are already flushed immediately
+        return 0;
+    }
     return 0;
 }

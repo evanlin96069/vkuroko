@@ -35,8 +35,10 @@ const PrintContext = struct {
             skip += std.mem.indexOfScalar(u8, bytes[skip..], 'm') orelse break;
         }
         const str = bytes[skip..];
-        // tier0 print functions use a 5020 byte internal buffer. Use 4096 to be safe.
-        const chunk_size = 4096;
+        // tier0 print functions drops the message slightly if it exceeds 5020 bytes.
+        // When printing too much characters it sometimes output broken text, so use a smaller chunk size to be safe.
+        // TODO: Don't cut off utf-8 code points in the middle.
+        const chunk_size = 1024;
         var off: usize = 0;
         while (off < str.len) {
             const len: c_int = @min(str.len - off, chunk_size);
