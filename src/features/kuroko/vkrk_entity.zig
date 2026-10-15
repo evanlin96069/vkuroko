@@ -165,10 +165,7 @@ pub const Entity = extern struct {
             },
             .ehandle => {
                 const val = datamap.getField(sdk.CBaseHandle, ptr, offset);
-                if (val.isValid()) {
-                    return KrkValue.intValue(val.getEntryIndex());
-                }
-                return KrkValue.noneValue();
+                return vkrk_types.EHandle.create(val.*);
             },
             .color32 => {
                 const val = datamap.getField(sdk.Color, ptr, offset);

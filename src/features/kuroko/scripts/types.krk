@@ -13,6 +13,31 @@ class QAngle(Vector):
         return f"QAngle({self.x}, {self.y}, {self.z})"
 
 
+class EHandle:
+    def __init__(self, index=None, serial_number=None):
+        self._index = index
+        self._serial_number = serial_number
+
+    def is_valid(self):
+        return self._index is not None
+
+    def get_index(self):
+        return self._index
+
+    def get_serial_number(self):
+        return self._serial_number
+
+    def __eq__(self, other):
+        if not isinstance(other, EHandle):
+            return False
+        return self._index == other._index and self._serial_number == other._serial_number
+
+    def __repr__(self):
+        if self._index is None:
+            return "EHandle(invalid)"
+        return f"EHandle(index={self._index}, serial_number={self._serial_number})"
+
+
 class VMatrix:
     def __init__(self, *values):
         if not values:

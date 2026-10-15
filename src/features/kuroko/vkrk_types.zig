@@ -41,6 +41,23 @@ pub const QAngle = struct {
     }
 };
 
+pub const EHandle = struct {
+    var class: *KrkClass = undefined;
+
+    pub fn create(handle: sdk.CBaseHandle) KrkValue {
+        const inst = KrkInstance.create(class);
+        VM.push(inst.asValue());
+        if (handle.isValid()) {
+            inst.fields.attachNamedValue("_index", KrkValue.intValue(handle.getEntryIndex()));
+            inst.fields.attachNamedValue("_serial_number", KrkValue.intValue(handle.getSerialNumber()));
+        } else {
+            inst.fields.attachNamedValue("_index", KrkValue.noneValue());
+            inst.fields.attachNamedValue("_serial_number", KrkValue.noneValue());
+        }
+        return VM.pop();
+    }
+};
+
 pub const VMatrix = struct {
     var class: *KrkClass = undefined;
 
@@ -71,5 +88,6 @@ pub fn bindAttributes(module: *KrkInstance) void {
 
     Vector.class = module.fields.get(KrkString.copyString("Vector").asValue()).?.asClass();
     QAngle.class = module.fields.get(KrkString.copyString("QAngle").asValue()).?.asClass();
+    EHandle.class = module.fields.get(KrkString.copyString("EHandle").asValue()).?.asClass();
     VMatrix.class = module.fields.get(KrkString.copyString("VMatrix").asValue()).?.asClass();
 }
