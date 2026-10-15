@@ -9,6 +9,8 @@ const tier1 = modules.tier1;
 const vgui = modules.vgui;
 const engine = modules.engine;
 
+const texthud = @import("texthud.zig");
+
 const Color = @import("sdk").Color;
 
 const Feature = @import("Feature.zig");
@@ -52,8 +54,14 @@ fn shouldLoad() bool {
 }
 
 fn onPaint() void {
-    if (vkrk_debug_hud.getBool()) {
-        const screen = vgui.imatsystem.getScreenSize();
+    if (!vkrk_debug_hud.getBool()) {
+        return;
+    }
+
+    const screen = vgui.imatsystem.getScreenSize();
+
+    const mode = vkrk_debug_hud.getInt();
+    if (mode == 1) {
         const cols = 8;
         const rows = 8;
         const padding: i32 = 10;
@@ -81,6 +89,13 @@ fn onPaint() void {
                 vgui.imatsystem.drawFilledRect(x0, y0, x1, y1);
             }
         }
+    } else if (mode == 2) {
+        const font = texthud.font_DefaultFixedOutline;
+        vgui.imatsystem.drawText(font, 10, 10, "Top Left", .{});
+        vgui.imatsystem.drawText(font, screen.wide - 10, 10, "Top Right", .{});
+        vgui.imatsystem.drawText(font, 10, screen.tall - 10, "Bottom Left", .{});
+        vgui.imatsystem.drawText(font, screen.wide - 10, screen.tall - 10, "Bottom Right", .{});
+        vgui.imatsystem.drawText(font, @divFloor(screen.wide, 2), @divFloor(screen.tall, 2), "Center", .{});
     }
 }
 
@@ -88,7 +103,9 @@ fn init() bool {
     vkrk_debug_hud.register();
     vkrk_debug_cmd.register();
 
-    event.paint.connect(onPaint);
+    if (event.paint.works) {
+        event.paint.connect(onPaint);
+    }
 
     return true;
 }

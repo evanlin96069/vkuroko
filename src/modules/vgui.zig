@@ -196,7 +196,6 @@ const IMatSystemSurface = extern struct {
         args: anytype,
     ) void {
         self.drawColoredText(
-            self,
             font,
             x,
             y,

@@ -249,6 +249,10 @@ const PosTextHUD = struct {
     var cl_showpos: ?*ConVar = null;
 
     fn shouldDraw() bool {
+        if (!client.vkrk_override_fps_panel.getBool()) {
+            return false;
+        }
+
         if (cl_showpos == null) {
             cl_showpos = tier1.icvar.findVar("cl_showpos");
         }
@@ -280,7 +284,6 @@ const PosTextHUD = struct {
 
     fn register() void {
         if (client.origCFPSPanel__ShouldDraw != null and client.mainViewOrigin != null and client.mainViewAngles != null) {
-            client.override_fps_panel = true;
             texthud.addHUDElement(.{
                 .shouldDraw = shouldDraw,
                 .paint = paint,

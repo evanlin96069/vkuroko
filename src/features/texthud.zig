@@ -85,7 +85,7 @@ fn font_list_Fn(args: *const tier1.CCommand) callconv(.c) void {
     }
 }
 
-var font_DefaultFixedOutline: HFont = 0;
+pub var font_DefaultFixedOutline: HFont = 0;
 
 var x: i32 = 0;
 var y: i32 = 0;
@@ -109,7 +109,9 @@ const FPSTextHUD = struct {
     }
 
     fn shouldDraw() bool {
-        if (!client.override_fps_panel) return false;
+        if (!client.vkrk_override_fps_panel.getBool()) {
+            return false;
+        }
 
         if (cl_showfps == null) {
             cl_showfps = tier1.icvar.findVar("cl_showfps");

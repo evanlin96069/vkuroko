@@ -4,6 +4,7 @@ const builtin = @import("builtin");
 const interfaces = @import("../interfaces.zig");
 const core = @import("../core.zig");
 const event = @import("../event.zig");
+const tier1 = @import("tier1.zig");
 
 const Module = @import("Module.zig");
 
@@ -20,6 +21,16 @@ pub var module: Module = .{
     .init = init,
     .deinit = deinit,
 };
+
+pub var vkrk_override_fps_panel = tier1.Variable.init(.{
+    .name = "vkrk_override_fps_panel",
+    .help_string = "Override the CFPSPanel.",
+    .flags = .{
+        .hidden = true,
+        .dont_record = true,
+    },
+    .default_value = "1",
+});
 
 const IClientEntityList = extern struct {
     _vt: [*]*const anyopaque,
@@ -131,12 +142,11 @@ pub var entlist: *IClientEntityList = undefined;
 pub var vclient: *IBaseClientDLL = undefined;
 pub var iinput: *IInput = undefined;
 
-pub var override_fps_panel = false;
 const CFPSPanel__ShouldDrawFunc = *const @TypeOf(hookedCFPSPanel__ShouldDraw);
 pub var origCFPSPanel__ShouldDraw: ?CFPSPanel__ShouldDrawFunc = null;
 
 fn hookedCFPSPanel__ShouldDraw(this: *anyopaque) callconv(VCallConv) bool {
-    if (override_fps_panel) {
+    if (vkrk_override_fps_panel.getBool()) {
         return false;
     }
     return origCFPSPanel__ShouldDraw.?(this);
@@ -259,6 +269,12 @@ fn init() bool {
         }
         break :blk null;
     };
+
+    if (origCFPSPanel__ShouldDraw != null) {
+        vkrk_override_fps_panel.register();
+    } else {
+        vkrk_override_fps_panel.setInt(0);
+    }
 
     return true;
 }
