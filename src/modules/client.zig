@@ -90,7 +90,7 @@ const IBaseClientDLL = extern struct {
                         if (GOT_addr) |base| {
                             // imm32 from lea
                             const imm32 = zhook.mem.loadValue(u32, p + 2);
-                            return @as(**IInput, @ptrFromInt(base + imm32)).*;
+                            return @as(**IInput, @ptrFromInt(base +% imm32)).*;
                         }
                     }
                 }

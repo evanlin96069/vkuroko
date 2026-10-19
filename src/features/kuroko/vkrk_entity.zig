@@ -123,13 +123,13 @@ pub const Entity = extern struct {
     fn getClassName(self: *const Entity) ?[*:0]const u8 {
         if (self.is_server) {
             if (entlist.server_list.getEntity(self.index)) |ent| {
-                const name = entlist.server_list.getNetworkClassName(ent);
+                const name = entlist.server_list.getClassName(ent);
                 if (name[0] == 0) return null;
                 return name;
             }
         } else {
             if (entlist.client_list.getEntity(self.index)) |ent| {
-                const name = entlist.client_list.getNetworkClassName(ent);
+                const name = entlist.client_list.getClassName(ent);
                 if (name[0] == 0) return null;
                 return name;
             }

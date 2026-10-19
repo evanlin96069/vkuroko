@@ -24,6 +24,65 @@ pub var module: Module = .{
     .deinit = deinit,
 };
 
+const IServerTools = extern struct {
+    _vt: [*]*const anyopaque,
+
+    const VTIndex = struct {
+        const firstEntity = 7 + abi.dtor_adjust;
+        const nextEntity = 8 + abi.dtor_adjust;
+    };
+
+    pub fn getFirstEntity(self: *IServerTools) ?*sdk.IServerEntity {
+        const _getFirstEntity: *const fn (this: *anyopaque) callconv(VCallConv) ?*sdk.IServerEntity = @ptrCast(self._vt[VTIndex.firstEntity]);
+        return _getFirstEntity(self);
+    }
+
+    pub fn getNextEntity(self: *IServerTools, entity: ?*sdk.IServerEntity) ?*sdk.IServerEntity {
+        const _getNextEntity: *const fn (this: *anyopaque, entity: ?*sdk.IServerEntity) callconv(VCallConv) ?*sdk.IServerEntity = @ptrCast(self._vt[VTIndex.nextEntity]);
+        return _getNextEntity(self, entity);
+    }
+
+    fn findEntityList(self: *IServerTools) ?*sdk.CBaseEntityList {
+        const addr: [*]const u8 = @ptrCast(self._vt[VTIndex.firstEntity]);
+        var p = addr;
+        switch (builtin.os.tag) {
+            .windows => {
+                while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
+                    return null;
+                })) {
+                    // Should we also match other the mov?
+                    if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.movecxi)) {
+                        return zhook.mem.loadValue(*sdk.CBaseEntityList, p + 1);
+                    }
+                }
+            },
+            .linux => {
+                var GOT_addr: ?u32 = null;
+                while (@intFromPtr(p) - @intFromPtr(addr) < 32) : (p = p + (zhook.x86.x86_len(p) catch {
+                    return null;
+                })) {
+                    if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.call)) {
+                        if (zhook.utils.matchPIC(p)) |off| {
+                            // imm32 from add
+                            const imm32 = zhook.mem.loadValue(u32, p + off);
+                            GOT_addr = @intFromPtr(p + 5) +% imm32;
+                        }
+                    } else if (p[0] == @intFromEnum(zhook.x86.Opcode.Op1.miscmw) and p[1] == zhook.x86.modrm(0b10, 0b110, 0b011)) {
+                        // PUSH dword ptr [EBX + imm32]
+                        if (GOT_addr) |base| {
+                            const imm32 = zhook.mem.loadValue(u32, p + 2);
+                            return @as(**sdk.CBaseEntityList, @ptrFromInt(base +% imm32)).*;
+                        }
+                    }
+                }
+            },
+            else => unreachable,
+        }
+
+        return null;
+    }
+};
+
 const IPlayerInfoManager = extern struct {
     _vt: [*]*const anyopaque,
 
@@ -271,6 +330,8 @@ pub fn canTracePlayerBBox() bool {
 
 pub var server_dll: []const u8 = "";
 
+pub var server_tools: *IServerTools = undefined;
+pub var entlist: *sdk.CBaseEntityList = undefined;
 pub var player_info_manager: *IPlayerInfoManager = undefined;
 pub var global_vars: *sdk.CGlobalVars = undefined;
 pub var gm: *CGameMovement = undefined;
@@ -279,6 +340,17 @@ fn init() bool {
     server_dll = zhook.utils.getModule("server") orelse blk: {
         core.log.warn("Failed to get server module", .{});
         break :blk "";
+    };
+
+    const server_tools_info = interfaces.create(interfaces.serverFactory, "VSERVERTOOLS", .{ 1, 2 }) orelse {
+        core.log.err("Failed to get IServerTools interface", .{});
+        return false;
+    };
+    server_tools = @ptrCast(server_tools_info.interface);
+
+    entlist = server_tools.findEntityList() orelse {
+        core.log.err("Failed to get CBaseEntityList", .{});
+        return false;
     };
 
     player_info_manager = @ptrCast(interfaces.serverFactory("PlayerInfoManager002", null) orelse {

@@ -9,6 +9,7 @@ const core = @import("../core.zig");
 const modules = @import("../modules.zig");
 const tier1 = modules.tier1;
 const engine = modules.engine;
+const server = modules.server;
 const client = modules.client;
 const ConCommand = tier1.ConCommand;
 
@@ -76,9 +77,8 @@ fn EntityList(comptime is_server: bool) type {
             if (!self.isValid()) return;
 
             if (is_server) {
-                const max_ent = engine.server.getEntityCount();
                 var i: u32 = 0;
-                while (self.ent_list.items.len < max_ent and i < sdk.MAX_EDICTS) : (i += 1) {
+                while (i < sdk.NUM_ENT_ENTRIES) : (i += 1) {
                     if (self.getEntity(i)) |ent| {
                         try self.ent_list.append(self.allocator, ent);
                         if (self.entityIsPortal(ent)) {
@@ -117,13 +117,18 @@ fn EntityList(comptime is_server: bool) type {
         pub fn getEntity(self: *const Self, index: u32) ?EntType {
             _ = self;
             if (is_server) {
-                if (engine.server.pEntityOfEntIndex(@intCast(index))) |ed| {
-                    return ed.getIServerEntity();
+                if (server.entlist.getEntInfoPtrByIndex(index)) |ent_info| {
+                    return ent_info.entity;
                 }
                 return null;
             } else {
                 return client.entlist.getClientEntity(@intCast(index));
             }
+        }
+
+        pub fn getClassName(self: *const Self, ent: EntType) [*:0]const u8 {
+            _ = self;
+            return ent.getDataDescMap().data_class_name;
         }
 
         pub fn getNetworkClassName(self: *const Self, ent: EntType) [*:0]const u8 {
@@ -143,9 +148,9 @@ fn EntityList(comptime is_server: bool) type {
                     if (class_ptr_ptr.*) |class_ptr| {
                         return class_ptr.getName();
                     }
-                    std.log.debug("getNetworkClassName: ServerClass is null", .{});
+                    // std.log.debug("getNetworkClassName: ServerClass is null", .{});
                 } else {
-                    std.log.debug("getNetworkClassName: Cannot find ServerClass", .{});
+                    // std.log.debug("getNetworkClassName: Cannot find ServerClass", .{});
                 }
                 return "";
             } else {
@@ -158,7 +163,7 @@ fn EntityList(comptime is_server: bool) type {
         }
 
         pub fn entityIsPortal(self: *const Self, ent: EntType) bool {
-            return std.mem.eql(u8, std.mem.span(self.getNetworkClassName(ent)), "CProp_Portal");
+            return std.mem.eql(u8, std.mem.span(self.getClassName(ent)), "CProp_Portal");
         }
 
         pub fn isValid(self: *const Self) bool {
@@ -269,12 +274,12 @@ fn print_ents_Fn(args: *const tier1.CCommand) callconv(.c) void {
     if (server_list.isValid()) {
         const ents = server_list.getEntityList() catch return;
         for (ents.items) |ent| {
-            std.log.info("{d}: {s}", .{ ent.getRefEHandle().getEntryIndex(), server_list.getNetworkClassName(ent) });
+            std.log.info("{d}: {s}", .{ ent.getRefEHandle().getEntryIndex(), server_list.getClassName(ent) });
         }
     } else if (client_list.isValid()) {
         const ents = client_list.getEntityList() catch return;
         for (ents.items) |ent| {
-            std.log.info("{d}: {s}", .{ ent.getRefEHandle().getEntryIndex(), client_list.getNetworkClassName(ent) });
+            std.log.info("{d}: {s}", .{ ent.getRefEHandle().getEntryIndex(), client_list.getClassName(ent) });
         }
     } else {
         std.log.info("No entities", .{});

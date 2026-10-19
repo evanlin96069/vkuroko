@@ -113,6 +113,7 @@ pub const IClientEntity = extern struct {
 
     const VTIndexIClientUnknown = struct {
         const getRefEHandle = 2 + abi.dtor_adjust;
+        const getDataDescMap = 13 + abi.dtor_adjust;
     };
 
     const VTIndexIClientNetworkable = struct {
@@ -127,6 +128,11 @@ pub const IClientEntity = extern struct {
     pub fn getClientClass(self: *const IClientEntity) *ClientClass {
         const _getClientClass: *const fn (this: *const anyopaque) callconv(VCallConv) *ClientClass = @ptrCast(self._vt_IClientNetworkable[VTIndexIClientNetworkable.getClientClass]);
         return _getClientClass(self);
+    }
+
+    pub fn getDataDescMap(self: *const IClientEntity) *DataMap {
+        const _getDataDescMap: *const fn (this: *const anyopaque) callconv(VCallConv) *DataMap = @ptrCast(self._vt_IClientUnknown[VTIndexIClientUnknown.getDataDescMap]);
+        return _getDataDescMap(self);
     }
 };
 
@@ -146,11 +152,17 @@ pub const IServerEntity = extern struct {
 
     const VTIndex = struct {
         const getRefEHandle = 2 + abi.dtor_adjust;
+        const getDataDescMap = 11 + abi.dtor_adjust;
     };
 
     pub fn getRefEHandle(self: *const IServerEntity) *const CBaseHandle {
         const _getRefEHandle: *const fn (this: *const anyopaque) callconv(VCallConv) *const CBaseHandle = @ptrCast(self._vt[VTIndex.getRefEHandle]);
         return _getRefEHandle(self);
+    }
+
+    pub fn getDataDescMap(self: *const IServerEntity) *DataMap {
+        const _getDataDescMap: *const fn (this: *const anyopaque) callconv(VCallConv) *DataMap = @ptrCast(self._vt[VTIndex.getDataDescMap]);
+        return _getDataDescMap(self);
     }
 };
 
@@ -182,6 +194,33 @@ pub const Edict = extern struct {
     pub fn getIServerEntity(self: *Edict) ?*IServerEntity {
         if (self.state_flags.full) {
             return self.unknown;
+        }
+        return null;
+    }
+};
+
+pub const CEntInfo = extern struct {
+    entity: ?*IServerEntity,
+    serial_number: c_int,
+    prev: ?*CEntInfo,
+    next: ?*CEntInfo,
+};
+
+pub const CBaseEntityList = extern struct {
+    _vt: [*]*const anyopaque,
+
+    ent_array: [NUM_ENT_ENTRIES]CEntInfo,
+    active_list: CEntInfoList,
+    free_non_networkable_list: CEntInfoList,
+
+    pub const CEntInfoList = extern struct {
+        head: ?*CEntInfo,
+        tail: ?*CEntInfo,
+    };
+
+    pub fn getEntInfoPtrByIndex(self: *CBaseEntityList, index: u32) ?*CEntInfo {
+        if (index < NUM_ENT_ENTRIES) {
+            return &self.ent_array[index];
         }
         return null;
     }
