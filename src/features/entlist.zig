@@ -278,17 +278,44 @@ var vkrk_print_ents = ConCommand.init(.{
 fn print_ents_Fn(args: *const tier1.CCommand) callconv(.c) void {
     _ = args;
 
-    if (server_list.isValid()) {
-        const ents = server_list.getEntityList() catch return;
-        for (ents.items) |ent| {
-            std.log.info("{d}: {s}", .{ ent.getRefEHandle().getEntryIndex(), server_list.getClassName(ent) });
+    var found_entity = false;
+    var index: u32 = 0;
+    while (index < sdk.NUM_ENT_ENTRIES) : (index += 1) {
+        const server_ent = server_list.getEntity(index);
+        const client_ent = if (index < sdk.MAX_EDICTS)
+            client_list.getEntity(index)
+        else
+            null;
+
+        if (server_ent) |s_ent| {
+            found_entity = true;
+            if (client_ent) |c_ent| {
+                std.log.info(
+                    "[ {d: >3}] SERVER (serial {d: >5}) : {s}, CLIENT (serial {d: >5}) : {s}",
+                    .{
+                        index,
+                        s_ent.getRefEHandle().getSerialNumber(),
+                        server_list.getClassName(s_ent),
+                        c_ent.getRefEHandle().getSerialNumber(),
+                        client_list.getClassName(c_ent),
+                    },
+                );
+            } else {
+                std.log.info(
+                    "[ {d: >3}] SERVER (serial {d: >5}) : {s}",
+                    .{ index, s_ent.getRefEHandle().getSerialNumber(), server_list.getClassName(s_ent) },
+                );
+            }
+        } else if (client_ent) |c_ent| {
+            found_entity = true;
+            std.log.info(
+                "[ {d: >3}] CLIENT (serial {d: >5}) : {s}",
+                .{ index, c_ent.getRefEHandle().getSerialNumber(), client_list.getClassName(c_ent) },
+            );
         }
-    } else if (client_list.isValid()) {
-        const ents = client_list.getEntityList() catch return;
-        for (ents.items) |ent| {
-            std.log.info("{d}: {s}", .{ ent.getRefEHandle().getEntryIndex(), client_list.getClassName(ent) });
-        }
-    } else {
+    }
+
+    if (!found_entity) {
         std.log.info("No entities", .{});
     }
 }
