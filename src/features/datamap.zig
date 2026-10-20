@@ -353,6 +353,8 @@ fn addMap(datamap: *DataMap, dll_map: *DllDataMaps) !void {
         try addFields(&map, datamap, 0, "");
 
         try dll_map.put(key, map);
+        class_names_updated = true;
+        class_names_set.put(key, {}) catch {};
     }
 }
 
@@ -360,7 +362,6 @@ fn findMaps(
     module: []const u8,
     module_range: []const u8,
     dll_map: *DllDataMaps,
-    class_names_set: *std.StringHashMap(void),
 ) !void {
     var patterns: std.ArrayList(MatchedPattern) = .empty;
     defer patterns.deinit(core.allocator);
@@ -375,7 +376,6 @@ fn findMaps(
                 core.log.debug("Failed to add datamap {s}: {t}", .{ map.data_class_name, err });
                 continue;
             };
-            class_names_set.put(std.mem.span(map.data_class_name), {}) catch {};
         }
     }
 
@@ -394,7 +394,6 @@ fn findMaps(
                     core.log.debug("Failed to add datamap {s}: {t}", .{ map.data_class_name, err });
                     continue;
                 };
-                class_names_set.put(std.mem.span(map.data_class_name), {}) catch {};
             }
         }
     }
@@ -412,11 +411,13 @@ fn deinitMaps(dll_map: *DllDataMaps) void {
     dll_map.deinit();
 }
 
-fn ensureMap(class_name: []const u8, datamap: *DataMap, dll_map: *DllDataMaps) !void {
-    if (dll_map.get(class_name) == null) {
-        try addMap(datamap, dll_map);
-        std.log.debug("Added datamap {s}", .{class_name});
-    }
+fn ensureMap(class_name: []const u8, datamap: *DataMap, dll_map: *DllDataMaps) bool {
+    if (dll_map.get(class_name) != null)
+        return false;
+
+    addMap(datamap, dll_map) catch return false;
+    std.log.debug("Added datamap {s}", .{class_name});
+    return true;
 }
 
 pub fn ensureEntityMaps(is_server: bool, datamap: *DataMap) !void {
@@ -425,10 +426,13 @@ pub fn ensureEntityMaps(is_server: bool, datamap: *DataMap) !void {
 
     if (!is_server and std.mem.startsWith(u8, class_name, "C_")) {
         const new_key = try std.fmt.allocPrint(core.allocator, "C{s}", .{class_name[2..]});
-        defer core.allocator.free(new_key);
-        try ensureMap(new_key, datamap, dll_map);
+        if (ensureMap(new_key, datamap, dll_map)) {
+            allocated_class_names.append(core.allocator, new_key) catch {};
+        } else {
+            core.allocator.free(new_key);
+        }
     } else {
-        try ensureMap(class_name, datamap, dll_map);
+        _ = ensureMap(class_name, datamap, dll_map);
     }
 }
 
@@ -527,12 +531,31 @@ fn datamap_walk_Fn(args: *const tier1.CCommand) callconv(.c) void {
     }
 }
 
+var class_names_set: std.StringHashMap(void) = undefined;
+var class_names_updated = true;
 var class_names: ?[][]const u8 = null;
 
 fn datamap_walk_completionFn(
     partial: [*:0]const u8,
     commands: *[ConCommand.completion_max_items][ConCommand.completion_item_length]u8,
 ) callconv(.c) c_int {
+    if (class_names_updated) {
+        if (class_names) |names| {
+            core.allocator.free(names);
+        }
+
+        class_names = core.allocator.alloc([]const u8, class_names_set.count()) catch null;
+        if (class_names) |names| {
+            var i: usize = 0;
+            var it = class_names_set.iterator();
+            while (it.next()) |entry| : (i += 1) {
+                names[i] = entry.key_ptr.*;
+            }
+        }
+
+        class_names_updated = false;
+    }
+
     if (class_names) |names| {
         return completion.simpleComplete(
             std.mem.span(vkrk_datamap_walk.base.name),
@@ -563,17 +586,15 @@ fn init() bool {
         client_dll_range = zhook.utils.getEntireModule("client") orelse return false;
     }
 
-    server_map = std.StringHashMap(std.StringHashMap(FieldInfo)).init(core.allocator);
-    client_map = std.StringHashMap(std.StringHashMap(FieldInfo)).init(core.allocator);
+    server_map = DllDataMaps.init(core.allocator);
+    client_map = DllDataMaps.init(core.allocator);
 
-    var class_names_set = std.StringHashMap(void).init(core.allocator);
-    defer class_names_set.deinit();
+    class_names_set = std.StringHashMap(void).init(core.allocator);
 
     findMaps(
         server.server_dll,
         server_dll_range,
         &server_map,
-        &class_names_set,
     ) catch {
         return false;
     };
@@ -581,11 +602,12 @@ fn init() bool {
         client.client_dll,
         client_dll_range,
         &client_map,
-        &class_names_set,
     ) catch {
         deinitMaps(&server_map);
         return false;
     };
+
+    // TODO: Move this into addMap
     // Rename C_ prefixes in client_map to C (C_BaseEntity -> CBaseEntity)
     {
         const Entry = struct { key: []const u8, value: std.StringHashMap(FieldInfo) };
@@ -616,15 +638,6 @@ fn init() bool {
         }
     }
 
-    class_names = core.allocator.alloc([]const u8, class_names_set.count()) catch null;
-    if (class_names) |names| {
-        var i: usize = 0;
-        var it = class_names_set.iterator();
-        while (it.next()) |entry| : (i += 1) {
-            names[i] = entry.key_ptr.*;
-        }
-    }
-
     core.log.debug("Found {d} server datamaps and {d} client datamaps", .{ server_map.count(), client_map.count() });
     if (server_map.count() == 0 and client_map.count() == 0) {
         server_map.deinit();
@@ -640,6 +653,7 @@ fn init() bool {
 }
 
 fn deinit() void {
+    class_names_set.deinit();
     if (class_names) |names| {
         core.allocator.free(names);
     }
