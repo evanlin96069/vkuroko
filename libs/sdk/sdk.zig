@@ -113,7 +113,8 @@ pub const IClientEntity = extern struct {
 
     const VTIndexIClientUnknown = struct {
         const getRefEHandle = 2 + abi.dtor_adjust;
-        const getDataDescMap = 13 + abi.dtor_adjust;
+        // Not really sure what changed, but 14 seems to work on Linux
+        const getDataDescMap = if (builtin.os.tag == .windows) 13 else 14 + abi.dtor_adjust;
     };
 
     const VTIndexIClientNetworkable = struct {
