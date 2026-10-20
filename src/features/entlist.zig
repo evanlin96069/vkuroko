@@ -127,8 +127,18 @@ fn EntityList(comptime is_server: bool) type {
         }
 
         pub fn getClassName(self: *const Self, ent: EntType) [*:0]const u8 {
-            _ = self;
-            return ent.getDataDescMap().data_class_name;
+            if (!is_server) {
+                return self.getNetworkClassName(ent);
+            }
+
+            const map = ent.getDataDescMap();
+
+            // Datamap pattern scan might miss some maps. Add them if we found a new one.
+            datamap.ensureEntityMaps(is_server, map) catch |err| {
+                core.log.debug("Failed to add datamap {s}: {t}", .{ map.data_class_name, err });
+            };
+
+            return map.data_class_name;
         }
 
         pub fn getNetworkClassName(self: *const Self, ent: EntType) [*:0]const u8 {
@@ -148,9 +158,6 @@ fn EntityList(comptime is_server: bool) type {
                     if (class_ptr_ptr.*) |class_ptr| {
                         return class_ptr.getName();
                     }
-                    // std.log.debug("getNetworkClassName: ServerClass is null", .{});
-                } else {
-                    // std.log.debug("getNetworkClassName: Cannot find ServerClass", .{});
                 }
                 return "";
             } else {

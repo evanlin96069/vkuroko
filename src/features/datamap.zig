@@ -25,8 +25,9 @@ pub const FieldInfo = struct {
     field_type: DataMap.FieldType,
 };
 
-pub var server_map: std.StringHashMap(std.StringHashMap(FieldInfo)) = undefined;
-pub var client_map: std.StringHashMap(std.StringHashMap(FieldInfo)) = undefined;
+const DllDataMaps = std.StringHashMap(std.StringHashMap(FieldInfo));
+pub var server_map: DllDataMaps = undefined;
+pub var client_map: DllDataMaps = undefined;
 
 var allocated_class_names: std.ArrayList([]const u8) = .empty;
 
@@ -335,7 +336,7 @@ pub fn CachedFields(comptime field_infos: anytype) type {
     };
 }
 
-fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(FieldInfo))) !void {
+fn addMap(datamap: *DataMap, dll_map: *DllDataMaps) !void {
     const key = std.mem.span(datamap.data_class_name);
     if (dll_map.getPtr(key)) |p| {
         try addFields(p, datamap, 0, "");
@@ -358,7 +359,7 @@ fn addMap(datamap: *DataMap, dll_map: *std.StringHashMap(std.StringHashMap(Field
 fn findMaps(
     module: []const u8,
     module_range: []const u8,
-    dll_map: *std.StringHashMap(std.StringHashMap(FieldInfo)),
+    dll_map: *DllDataMaps,
     class_names_set: *std.StringHashMap(void),
 ) !void {
     var patterns: std.ArrayList(MatchedPattern) = .empty;
@@ -399,7 +400,7 @@ fn findMaps(
     }
 }
 
-fn deinitMaps(dll_map: *std.StringHashMap(std.StringHashMap(FieldInfo))) void {
+fn deinitMaps(dll_map: *DllDataMaps) void {
     var it = dll_map.iterator();
     while (it.next()) |kv| {
         var inner_it = kv.value_ptr.iterator();
@@ -409,6 +410,26 @@ fn deinitMaps(dll_map: *std.StringHashMap(std.StringHashMap(FieldInfo))) void {
         kv.value_ptr.deinit();
     }
     dll_map.deinit();
+}
+
+fn ensureMap(class_name: []const u8, datamap: *DataMap, dll_map: *DllDataMaps) !void {
+    if (dll_map.get(class_name) == null) {
+        try addMap(datamap, dll_map);
+        std.log.debug("Added datamap {s}", .{class_name});
+    }
+}
+
+pub fn ensureEntityMaps(is_server: bool, datamap: *DataMap) !void {
+    const dll_map: *DllDataMaps = if (is_server) &server_map else &client_map;
+    const class_name = std.mem.span(datamap.data_class_name);
+
+    if (!is_server and std.mem.startsWith(u8, class_name, "C_")) {
+        const new_key = try std.fmt.allocPrint(core.allocator, "C{s}", .{class_name[2..]});
+        defer core.allocator.free(new_key);
+        try ensureMap(new_key, datamap, dll_map);
+    } else {
+        try ensureMap(class_name, datamap, dll_map);
+    }
 }
 
 var vkrk_datamap_print = ConCommand.init(.{
